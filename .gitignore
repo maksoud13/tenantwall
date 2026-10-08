@@ -1,0 +1,43 @@
+# ===== Java =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+.settings/
+.project
+.classpath
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+
+# ===== Environment =====
+.env
+.env.local
+
+# ===== Archives =====
+*.rar
+*.zip
+
+# ===== Build outputs =====
+dist/
+build/
+out/
