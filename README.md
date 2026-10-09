@@ -2,7 +2,7 @@
 
 Stop data leaks in multi-tenant applications. Zero code changes.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Try%20Now-blue)](https://maksoud13.github.io/datashield-demo/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Try%20Now-blue)](https://maksoud13.github.io/tenantwall-demo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## The Problem
@@ -50,7 +50,7 @@ App → Java Agent → [Simple?] → JSqlParser (Local)
        ↓
     Database
 Live Demo
-Try it: https://maksoud13.github.io/datashield-demo/
+Try it: https://maksoud13.github.io/tenantwall-demo/
 
 Project Structure
 text
