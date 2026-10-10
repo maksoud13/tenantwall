@@ -23,7 +23,7 @@ public class PrepareStatementAdvice {
                 tenantId = "TENANT_A"; // مؤقت
             }
 
-            String modifiedSql = SqlModifier.addTenantId(sql, tenantId);
+            String modifiedSql = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
             if (!modifiedSql.equals(sql)) {
                 args[0] = modifiedSql;
                 System.out.println("✅ [PrepStmt] Modified SQL (PreparedStatement): " + modifiedSql);

@@ -46,7 +46,7 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
-       
+
         <!-- عشان نستخدم الـ Agent بتاعنا، هنضيفه كـ dependency عشان الكلاسات تبقى موجودة لكن مش
         هنستدعيها -->
         <dependency>
@@ -61,7 +61,12 @@
             <artifactId>javafaker</artifactId>
             <version>1.0.2</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.tenantwall</groupId>
+            <artifactId>agent-module</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>com.github.jsqlparser</groupId>
             <artifactId>jsqlparser</artifactId>

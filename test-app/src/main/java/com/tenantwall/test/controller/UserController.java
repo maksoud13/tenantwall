@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.PostConstruct;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -154,5 +157,67 @@ public class UserController {
     public Map<String, String> resetCache() {
         com.tenantwall.agent.SqlModifier.clearCache();
         return Map.of("status", "cache cleared");
+    }
+
+    @GetMapping("/smart-stats")
+    public Map<String, Object> getSmartStats() {
+        Map<String, Object> result = new HashMap<>();
+        var stats = com.tenantwall.agent.SmartSqlModifier.getCacheStats();
+        result.put("cacheHits", stats.hitCount());
+        result.put("cacheMisses", stats.missCount());
+        result.put("cacheSize", com.tenantwall.agent.SmartSqlModifier.getCacheSize());
+        result.put("pythonCalls", com.tenantwall.agent.SmartSqlModifier.getPythonCallCount());
+        result.put("localCalls", com.tenantwall.agent.SmartSqlModifier.getLocalCallCount());
+        result.put("fallbacks", com.tenantwall.agent.SmartSqlModifier.getFallbackCount());
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    @GetMapping("/test-cte")
+    public List<Object[]> testCte() {
+        String sql = "WITH d AS (SELECT id, name, tenant_id FROM users) SELECT * FROM d";
+        return entityManager.createNativeQuery(sql).getResultList();
+    }
+
+    @GetMapping("/users-pure-sql")
+    public List<Object[]> getUsersPureSql() {
+        org.hibernate.Session session = entityManager.unwrap(org.hibernate.Session.class);
+
+        return session.doReturningWork(connection -> {
+            List<Object[]> result = new java.util.ArrayList<>();
+            try (java.sql.Statement stmt = connection.createStatement()) {
+                java.sql.ResultSet rs = stmt.executeQuery(
+                        "SELECT id, name, tenant_id FROM users WHERE tenant_id = 'TENANT_A'");
+                while (rs.next()) {
+                    result.add(new Object[] {
+                            rs.getLong("id"),
+                            rs.getString("name"),
+                            rs.getString("tenant_id")
+                    });
+                }
+            }
+            return result;
+        });
+    }
+
+    @GetMapping("/users-pure-sql-old")
+    public List<Object[]> getUsersPureSqlold() {
+        // Random parameter value forces new PreparedStatement
+        String sql = "SELECT id, name, tenant_id FROM users";
+        return entityManager.createNativeQuery(sql).getResultList();
+    }
+
+    @GetMapping("/users-direct-jdbc")
+    public List<Object[]> getUsersDirectJdbc() throws Exception {
+        java.sql.Connection conn = entityManager.unwrap(java.sql.Connection.class);
+        try (java.sql.PreparedStatement stmt = conn.prepareStatement(
+                "SELECT id, name, tenant_id FROM users")) {
+            java.sql.ResultSet rs = stmt.executeQuery();
+            List<Object[]> result = new ArrayList<>();
+            while (rs.next()) {
+                result.add(new Object[] { rs.getLong(1), rs.getString(2), rs.getString(3) });
+            }
+            return result;
+        }
     }
 }

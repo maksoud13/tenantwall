@@ -124,6 +124,25 @@ public class SqlModifier {
     // 🎯 4. معالجة PlainSelect (استعلام بسيط + JOIN + Subquery)
     // =========================================================
     private static void handlePlainSelect(PlainSelect plainSelect, String columnName, String value) {
+        if (alreadyHasFilter(plainSelect, columnName)) {
+            System.out.println("✅ [Modifier] Filter already exists, skipping.");
+            // بس لسه بنعالج الـ subqueries
+            if (plainSelect.getWhere() != null) {
+                processExpression(plainSelect.getWhere(), columnName, value);
+            }
+            if (plainSelect.getJoins() != null) {
+                for (Join join : plainSelect.getJoins()) {
+                    java.util.Collection<Expression> onExpressions = join.getOnExpressions();
+                    if (onExpressions != null && !onExpressions.isEmpty()) {
+                        for (Expression onExpr : onExpressions) {
+                            processExpression(onExpr, columnName, value);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
         // 4.1. نبني شرط columnName = 'value'
         Expression filterCondition = createFilterCondition(columnName, value);
         Expression currentWhere = plainSelect.getWhere();
@@ -321,4 +340,74 @@ public class SqlModifier {
     public static long getCacheSize() {
         return SQL_CACHE.estimatedSize();
     }
+
+    @SuppressWarnings("unused")
+    private static boolean alreadyHasFilter(PlainSelect plainSelect, String columnName) {
+        Expression where = plainSelect.getWhere();
+        if (where == null) {
+            return false;
+        }
+        return containsColumn(where, columnName);
+    }
+
+    private static boolean containsColumn(Expression expr, String columnName) {
+        if (expr == null)
+            return false;
+
+        // لو Column، شوف لو اسمه زي اللي بندور عليه
+        if (expr instanceof net.sf.jsqlparser.schema.Column) {
+            net.sf.jsqlparser.schema.Column col = (net.sf.jsqlparser.schema.Column) expr;
+            return columnName.equalsIgnoreCase(col.getColumnName());
+        }
+
+        // لو Parenthesis، ادخل جواه
+        if (expr instanceof Parenthesis) {
+            return containsColumn(((Parenthesis) expr).getExpression(), columnName);
+        }
+
+        // لو AndExpression، افحص الطرفين
+        if (expr instanceof AndExpression) {
+            AndExpression and = (AndExpression) expr;
+            return containsColumn(and.getLeftExpression(), columnName)
+                    || containsColumn(and.getRightExpression(), columnName);
+        }
+
+        // لو OrExpression، افحص الطرفين
+        if (expr instanceof OrExpression) {
+            OrExpression or = (OrExpression) expr;
+            return containsColumn(or.getLeftExpression(), columnName)
+                    || containsColumn(or.getRightExpression(), columnName);
+        }
+
+        // لو ComparisonOperator (زي =, >, <)، افحص الطرفين
+        if (expr instanceof ComparisonOperator) {
+            ComparisonOperator comp = (ComparisonOperator) expr;
+            return containsColumn(comp.getLeftExpression(), columnName)
+                    || containsColumn(comp.getRightExpression(), columnName);
+        }
+
+        // لو Between، افحص الأجزاء
+        if (expr instanceof Between) {
+            Between between = (Between) expr;
+            return containsColumn(between.getLeftExpression(), columnName)
+                    || containsColumn(between.getBetweenExpressionStart(), columnName)
+                    || containsColumn(between.getBetweenExpressionEnd(), columnName);
+        }
+
+        // لو LikeExpression، افحص الطرفين
+        if (expr instanceof LikeExpression) {
+            LikeExpression like = (LikeExpression) expr;
+            return containsColumn(like.getLeftExpression(), columnName)
+                    || containsColumn(like.getRightExpression(), columnName);
+        }
+
+        // لو NotExpression، ادخل جواه
+        if (expr instanceof NotExpression) {
+            NotExpression not = (NotExpression) expr;
+            return containsColumn(not.getExpression(), columnName);
+        }
+
+        return false;
+    }
+
 }
