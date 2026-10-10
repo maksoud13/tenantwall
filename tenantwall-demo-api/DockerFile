@@ -1,0 +1,32 @@
+# ============= Build Stage =============
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+
+# Copy pom.xml and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copy source and build
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# ============= Runtime Stage =============
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -S tenantwall && adduser -S tenantwall -G tenantwall
+
+# Copy the built JAR
+COPY --from=build /app/target/tenantwall-demo-api-1.0.0.jar app.jar
+
+# Change ownership
+RUN chown -R tenantwall:tenantwall /app
+USER tenantwall
+
+# Cloud Run uses PORT env variable
+ENV PORT=8080
+EXPOSE 8080
+
+# Run
+CMD ["java", "-Xmx256m", "-jar", "app.jar"]
