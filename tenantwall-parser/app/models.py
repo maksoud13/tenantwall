@@ -3,14 +3,13 @@ from typing import Optional, List
 
 
 class ModifyRequest(BaseModel):
-    sql: str = Field(..., description="The SQL SELECT query to modify")
+    sql: str = Field(..., description="The SQL query to modify")
     column: str = Field(default="tenant_id", description="Column name to filter on")
     value: str = Field(..., description="Value to filter by")
     dialect: str = Field(default="mysql", description="SQL dialect")
     excluded_tables: Optional[List[str]] = Field(
         default=None,
-        description="List of table names to skip. No filter will be added to them.",
-        examples=[["countries", "currencies", "audit_log"]]
+        description="Tables to skip (no filter will be added)"
     )
 
 
@@ -20,6 +19,7 @@ class ModifyResponse(BaseModel):
     error: Optional[str] = None
     dialect: Optional[str] = None
     skipped_tables: Optional[List[str]] = None
+    statement_type: Optional[str] = None    # ← جديد
 
 
 class HealthResponse(BaseModel):
