@@ -11,7 +11,7 @@ public class PythonServiceClient {
     private static final String BASE_URL = 
             System.getenv().getOrDefault(
                 "TENANTWALL_PARSER_URL", 
-                "http://localhost:8000"
+                "https://elementary-calls-lite-reports.trycloudflare.com"
             );
 
     private static final HttpClient CLIENT = HttpClient.newBuilder()
