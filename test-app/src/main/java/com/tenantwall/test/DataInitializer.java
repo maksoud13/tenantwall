@@ -68,7 +68,7 @@ public class DataInitializer implements CommandLineRunner {
         orderRepo.saveAll(orders);
 
         System.out.println("✅ تم إضافة " + users.size() + " مستخدم، " + customers.size() + " عميل، " + orders.size() + " طلب.");
-         com.tenantwall.agent.SqlModifier.clearCache();
+         com.tenantwall.agent.SmartSqlModifier.clearCache();
    
     }
 }

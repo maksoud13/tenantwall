@@ -141,12 +141,12 @@ public class UserController {
     @Operation(summary = "Cache statistics", description = "Shows Caffeine cache performance stats (hits, misses, hit rate).")
     @GetMapping("/cache-stats")
     public java.util.Map<String, Object> getCacheStats() {
-        var stats = com.tenantwall.agent.SqlModifier.getCacheStats();
+        var stats = com.tenantwall.agent.SmartSqlModifier.getCacheStats();
         java.util.Map<String, Object> result = new java.util.HashMap<>();
         result.put("hits", stats.hitCount());
         result.put("misses", stats.missCount());
         result.put("hitRate", String.format("%.2f%%", stats.hitRate() * 100));
-        result.put("size", com.tenantwall.agent.SqlModifier.getCacheSize());
+        result.put("size", com.tenantwall.agent.SmartSqlModifier.getCacheSize());
         result.put("evictions", stats.evictionCount());
         result.put("loadTime", stats.totalLoadTime() / 1_000_000 + " ms");
         return result;
@@ -155,7 +155,7 @@ public class UserController {
     @Operation(summary = "Reset cache statistics", description = "Clears the cache and resets stats. Useful for benchmarking.")
     @PostMapping("/cache-reset")
     public Map<String, String> resetCache() {
-        com.tenantwall.agent.SqlModifier.clearCache();
+        com.tenantwall.agent.SmartSqlModifier.clearCache();
         return Map.of("status", "cache cleared");
     }
 
