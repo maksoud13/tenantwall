@@ -210,6 +210,9 @@ class SqlModifier:
         return False
 
     def _is_trivial_select(self, select: exp.Select) -> bool:
+        # If there's a FROM clause, it's NOT trivial — the table needs filtering
+        if select.args.get("from") is not None:
+            return False
         expressions = select.expressions
         if len(expressions) == 1:
             first = expressions[0]
@@ -245,6 +248,14 @@ class SqlModifier:
     def _process_subqueries_in_expr(self, expr: exp.Expression, column: str, value: str):
         if expr is None:
             return
+
+        # ─── EXISTS (SELECT ...) ───
+        # sqlglot stores this as exp.Exists(this=Select(...)), NOT exp.Subquery
+        for exists in expr.find_all(exp.Exists):
+            if exists.this is not None:
+                self._modify_tree(exists.this, column, value)
+
+        # ─── Subquery wrappers (IN, FROM (SELECT ...)) ───
         for subquery in expr.find_all(exp.Subquery):
             if subquery.this:
                 self._modify_tree(subquery.this, column, value)
