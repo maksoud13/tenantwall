@@ -17,7 +17,6 @@
         <spring-boot.version>3.3.5</spring-boot.version>
     </properties>
 
-    <!-- إدارة إصدارات Spring Boot -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -31,12 +30,10 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- أساسيات الويب (RestController) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- JPA عشان نتعامل مع قاعدة البيانات -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -47,30 +44,18 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- عشان نستخدم الـ Agent بتاعنا، هنضيفه كـ dependency عشان الكلاسات تبقى موجودة لكن مش
-        هنستدعيها -->
-        <dependency>
-            <groupId>com.tenantwall</groupId>
-            <artifactId>agent-module</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope> <!-- مش هنحتاجها في وقت التشغيل لأنها هتتحط كـ Agent -->
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.javafaker</groupId>
-            <artifactId>javafaker</artifactId>
-            <version>1.0.2</version>
-        </dependency>
+        <!-- الـ Agent: compile-time فقط، الـ runtime ييجي من -javaagent -->
         <dependency>
             <groupId>com.tenantwall</groupId>
             <artifactId>agent-module</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
+
         <dependency>
-            <groupId>com.github.jsqlparser</groupId>
-            <artifactId>jsqlparser</artifactId>
-            <version>4.9</version>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
         </dependency>
 
         <dependency>

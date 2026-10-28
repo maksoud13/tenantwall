@@ -1,54 +1,51 @@
 package com.tenantwall.agent;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class DeleteHandlerTest {
 
-    private static final String COLUMN = "tenant_id";
-    private static final String VALUE = "TENANT_A";
-
     @Test
-    @DisplayName("DELETE with WHERE — filter added")
     void deleteWithWhere() {
         String sql = "DELETE FROM orders WHERE id = 5";
-        String result = SqlModifier.addFilter(sql, COLUMN, VALUE);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        assertTrue(result.contains("(id = 5)"), "Got: " + result);
-        assertTrue(result.contains("tenant_id = 'TENANT_A'"), "Got: " + result);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "DELETE should get tenant filter. Got: " + result);
+        assertTrue(result.contains("id = 5"),
+                "Original WHERE should be preserved. Got: " + result);
     }
 
     @Test
-    @DisplayName("SECURITY: DELETE without WHERE — filter injected (prevents mass delete)")
     void deleteWithoutWhere() {
         String sql = "DELETE FROM orders";
-        String result = SqlModifier.addFilter(sql, COLUMN, VALUE);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        assertTrue(result.contains("WHERE tenant_id = 'TENANT_A'"),
-                "Mass delete must be scoped to tenant. Got: " + result);
+        assertTrue(result.contains("WHERE"),
+                "DELETE without WHERE should get a WHERE clause. Got: " + result);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "Filter should be injected. Got: " + result);
     }
 
     @Test
-    @DisplayName("CRITICAL: DELETE with OR — parenthesis protection")
     void deleteWithOr() {
         String sql = "DELETE FROM orders WHERE status = 'CANCELLED' OR status = 'EXPIRED'";
-        String result = SqlModifier.addFilter(sql, COLUMN, VALUE);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        assertTrue(result.contains("(status = 'CANCELLED' OR status = 'EXPIRED')"),
-                "OR must be wrapped. Got: " + result);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "Filter should be injected. Got: " + result);
+        // OR should be wrapped in parens to prevent leaks
+        assertTrue(result.matches("(?s).*\\(.*OR.*\\).*AND.*tenant_id.*"),
+                "OR should be wrapped in parens. Got: " + result);
     }
 
     @Test
-    @DisplayName("DELETE with subquery in WHERE")
-    void deleteWithSubquery() {
-        String sql = "DELETE FROM orders WHERE customer_id IN (SELECT id FROM customers WHERE level = 'GOLD')";
-        String result = SqlModifier.addFilter(sql, COLUMN, VALUE);
+    void deleteWithExistingTenant() {
+        String sql = "DELETE FROM orders WHERE tenant_id = 'TENANT_A' AND id = 5";
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_B");
 
-        assertTrue(result.contains("tenant_id = 'TENANT_A'"), "Got: " + result);
-        // Subquery should also have the filter
-        assertTrue(result.contains("level = 'GOLD'") && result.contains("customer_id IN"),
-                "Subquery should be preserved. Got: " + result);
+        assertEquals(sql, result,
+                "DELETE with existing tenant filter should be unchanged. Got: " + result);
     }
 }

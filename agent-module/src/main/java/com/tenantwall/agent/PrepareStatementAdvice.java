@@ -5,30 +5,24 @@ import net.bytebuddy.asm.Advice;
 public class PrepareStatementAdvice {
 
     @Advice.OnMethodEnter
-    public static void intercept(@Advice.AllArguments Object[] args,
-            @Advice.Local("alreadyProcessed") boolean alreadyProcessed) {
+    public static void intercept(
+            @Advice.Argument(value = 0, readOnly = false) String sql) {
 
-        if (alreadyProcessed) {
+        if (sql == null || sql.isEmpty()) {
             return;
-        } else {
+        }
 
-            if (args == null || args.length == 0 || !(args[0] instanceof String)) {
-                return;
-            }
+        String tenantId = TenantContext.getTenant();
+        if (tenantId == null || tenantId.isEmpty()) {
+            return;
+        }
 
-            String sql = (String) args[0];
-            String tenantId = TenantContext.getTenant();
+        String column = TenantwallConfig.getFilterColumn();
+        String modified = SmartSqlModifier.modify(sql, column, tenantId);
 
-            if (tenantId == null) {
-                tenantId = "TENANT_A"; // مؤقت
-            }
-
-            String modifiedSql = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
-            if (!modifiedSql.equals(sql)) {
-                args[0] = modifiedSql;
-                System.out.println("✅ [PrepStmt] Modified SQL (PreparedStatement): " + modifiedSql);
-            }
-            alreadyProcessed = true;
+        if (!modified.equals(sql)) {
+            sql = modified;
+            System.err.println("✅ [PrepStmt] Modified: " + sql);
         }
     }
 }

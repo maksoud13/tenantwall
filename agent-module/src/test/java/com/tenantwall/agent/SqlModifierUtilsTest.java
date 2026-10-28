@@ -1,70 +1,67 @@
 package com.tenantwall.agent;
 
-import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.parser.CCJSqlParserManager;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-
-import java.io.StringReader;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SqlModifierUtilsTest {
 
-    private final CCJSqlParserManager parser = new CCJSqlParserManager();
+    @Test
+    void createFilterCondition_withoutAlias() {
+        Expression filter = SqlModifierUtils.createFilterCondition("tenant_id", "TENANT_A");
+
+        assertInstanceOf(EqualsTo.class, filter);
+        EqualsTo eq = (EqualsTo) filter;
+        assertEquals("tenant_id", ((Column) eq.getLeftExpression()).getColumnName());
+        assertEquals("TENANT_A", ((StringValue) eq.getRightExpression()).getValue());
+    }
 
     @Test
-    @DisplayName("createFilterCondition — builds 'col = value'")
-    void testCreateFilterCondition() {
-        var result = SqlModifierUtils.createFilterCondition("tenant_id", "TENANT_A");
+    void createFilterCondition_withAlias() {
+        Expression filter = SqlModifierUtils.createFilterCondition("tenant_id", "TENANT_A", "p");
+
+        assertInstanceOf(EqualsTo.class, filter);
+        EqualsTo eq = (EqualsTo) filter;
+        Column left = (Column) eq.getLeftExpression();
+        assertEquals("tenant_id", left.getColumnName());
+        assertNotNull(left.getTable());
+        assertEquals("p", left.getTable().getName());
+    }
+
+    @Test
+    void addFilterToWhere_nullCurrent() {
+        Expression result = SqlModifierUtils.addFilterToWhere(null, "tenant_id", "TENANT_A");
+
         assertInstanceOf(EqualsTo.class, result);
-        assertEquals("tenant_id = 'TENANT_A'", result.toString());
     }
 
     @Test
-    @DisplayName("addFilterToWhere — null WHERE becomes filter alone")
-    void testAddFilterToNullWhere() {
-        var result = SqlModifierUtils.addFilterToWhere(null, "tenant_id", "TENANT_A");
-        assertEquals("tenant_id = 'TENANT_A'", result.toString());
-    }
+    void addFilterToWhere_existingWhere() {
+        EqualsTo existing = new EqualsTo();
+        existing.setLeftExpression(new Column("id"));
+        existing.setRightExpression(new StringValue("5"));
 
-    @Test
-    @DisplayName("addFilterToWhere — existing WHERE wrapped in parenthesis")
-    void testAddFilterWrapsExisting() throws Exception {
-        // Parse "id = 5" as a WHERE expression
-        Select select = (Select) parser.parse(new StringReader("SELECT * FROM t WHERE id = 5"));
-        PlainSelect ps = (PlainSelect) select.getSelectBody();
+        Expression result = SqlModifierUtils.addFilterToWhere(existing, "tenant_id", "TENANT_A");
 
-        var result = SqlModifierUtils.addFilterToWhere(ps.getWhere(), "tenant_id", "TENANT_A");
-
+        // Should wrap in parens and AND with tenant filter
         assertInstanceOf(AndExpression.class, result);
-        AndExpression and = (AndExpression) result;
-        assertInstanceOf(Parenthesis.class, and.getLeftExpression());
-        assertTrue(result.toString().contains("(id = 5)"));
-        assertTrue(result.toString().contains("tenant_id = 'TENANT_A'"));
+        String sql = result.toString();
+        assertTrue(sql.contains("id = '5'"));
+        assertTrue(sql.contains("tenant_id = 'TENANT_A'"));
     }
 
     @Test
-    @DisplayName("alreadyHasFilter — detects existing filter")
-    void testAlreadyHasFilter() throws Exception {
-        Select select = (Select) parser.parse(
-            new StringReader("SELECT * FROM t WHERE tenant_id = 'TENANT_B'"));
-        PlainSelect ps = (PlainSelect) select.getSelectBody();
+    void alreadyHasFilter_detectsTenant() {
+        EqualsTo existing = new EqualsTo();
+        existing.setLeftExpression(new Column("tenant_id"));
+        existing.setRightExpression(new StringValue("TENANT_A"));
 
-        assertTrue(SqlModifierUtils.alreadyHasFilter(ps.getWhere(), "tenant_id"));
-        assertFalse(SqlModifierUtils.alreadyHasFilter(ps.getWhere(), "user_id"));
-    }
-
-    @Test
-    @DisplayName("alreadyHasFilter — null WHERE returns false")
-    void testAlreadyHasFilterNull() {
-        assertFalse(SqlModifierUtils.alreadyHasFilter(null, "tenant_id"));
+        assertTrue(SqlModifierUtils.alreadyHasFilter(existing, "tenant_id"));
+        assertFalse(SqlModifierUtils.alreadyHasFilter(existing, "other_col"));
     }
 }

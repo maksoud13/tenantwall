@@ -8,6 +8,7 @@ import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 
 import java.util.List;
@@ -36,6 +37,19 @@ public class SqlModifierUtils {
     public static Expression createFilterCondition(String column, String value) {
         EqualsTo equalsTo = new EqualsTo();
         equalsTo.setLeftExpression(new Column(column));
+        equalsTo.setRightExpression(new StringValue(value));
+        return equalsTo;
+    }
+
+    public static Expression createFilterCondition(String column, String value, String tableAlias) {
+        EqualsTo equalsTo = new EqualsTo();
+        Expression left;
+        if (tableAlias != null && !tableAlias.isEmpty()) {
+            left = new Column(new Table(tableAlias), column); // ← p1_0.tenant_id
+        } else {
+            left = new Column(column); // ← tenant_id
+        }
+        equalsTo.setLeftExpression(left);
         equalsTo.setRightExpression(new StringValue(value));
         return equalsTo;
     }
@@ -74,6 +88,20 @@ public class SqlModifierUtils {
         return new AndExpression(protectedWhere, condition);
     }
 
+    public static Expression addFilterToWhere(Expression currentWhere,
+            String column, String value, String tableAlias) {
+        Expression condition = createFilterCondition(column, value, tableAlias);
+        if (currentWhere == null) {
+            return condition;
+        }
+        Parenthesis protectedWhere;
+        if (currentWhere instanceof Parenthesis) {
+            protectedWhere = (Parenthesis) currentWhere;
+        } else {
+            protectedWhere = new Parenthesis(currentWhere);
+        }
+        return new AndExpression(protectedWhere, condition);
+    }
     // ═══════════════════════════════════════════════════════════════
     // 3. Filter existence check
     // ═══════════════════════════════════════════════════════════════

@@ -38,20 +38,17 @@ public class SmartSqlModifier {
 
         String cacheKey = sql + "|" + column + "|" + value;
 
-        // 1. Check cache
         String cached = CACHE.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
 
-        // 2. Decide route
         boolean complex = QueryAnalyzer.isComplex(sql);
         String result = null;
 
-        if (complex) {
+        if (complex && PythonServiceClient.isEnabled()) {
             result = tryPython(sql, column, value);
             if (result == null) {
-                // Python failed → fallback to local
                 fallbackCount++;
                 System.out.println("⚠️ [SmartModifier] Python failed, falling back to local");
                 result = tryLocal(sql, column, value);
@@ -59,15 +56,15 @@ public class SmartSqlModifier {
                 pythonCallCount++;
             }
         } else {
+            // Not complex, OR python disabled → always local
             result = tryLocal(sql, column, value);
             localCallCount++;
         }
 
         if (result == null) {
-            result = sql; // Give up, return original
+            result = sql;
         }
 
-        // 3. Cache result
         if (!result.equals(sql)) {
             CACHE.put(cacheKey, result);
         }
@@ -77,7 +74,7 @@ public class SmartSqlModifier {
 
     private static String tryPython(String sql, String column, String value) {
         try {
-            String dialect = System.getProperty("tenantwall.dialect", "mysql");
+            String dialect = TenantwallConfig.getDialect();
             String result = PythonServiceClient.modify(sql, column, value, dialect);
             System.out.println("🐍 [SmartModifier] Processed by Python service");
             return result;

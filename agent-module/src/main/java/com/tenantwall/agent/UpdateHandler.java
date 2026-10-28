@@ -1,7 +1,10 @@
 package com.tenantwall.agent;
 
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.update.Update;
+
+import java.util.Locale;
 
 /**
  * Handles UPDATE statements.
@@ -14,6 +17,14 @@ import net.sf.jsqlparser.statement.update.Update;
 public class UpdateHandler {
 
     public static String handle(Update update, String column, String value) {
+
+        // ─── Excluded table check ───
+        if (isExcluded(update.getTable())) {
+            System.out.println("⏭️ [UpdateHandler] Table excluded, skipping: "
+                    + update.getTable().getName());
+            return update.toString();
+        }
+
         Expression currentWhere = update.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
@@ -23,16 +34,32 @@ public class UpdateHandler {
                 System.out.println("🛡️ [UpdateHandler] UPDATE without WHERE detected");
             }
 
+            String prefix = extractPrefix(update.getTable());
             Expression newWhere = SqlModifierUtils.addFilterToWhere(
-                    currentWhere, column, value);
+                    currentWhere, column, value, prefix);
             update.setWhere(newWhere);
         }
 
-        // Process subqueries in WHERE
         if (update.getWhere() != null) {
             SqlModifierUtils.processExpression(update.getWhere(), column, value);
         }
 
         return update.toString();
+    }
+
+    private static String extractPrefix(Table table) {
+        if (table == null)
+            return null;
+        if (table.getAlias() != null && table.getAlias().getName() != null) {
+            return table.getAlias().getName();
+        }
+        return table.getName();
+    }
+
+    private static boolean isExcluded(Table table) {
+        if (table == null || table.getName() == null)
+            return false;
+        return TenantwallConfig.getExcludedTables()
+                .contains(table.getName().toLowerCase(Locale.ROOT));
     }
 }

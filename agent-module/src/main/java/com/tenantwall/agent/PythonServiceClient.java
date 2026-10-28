@@ -14,13 +14,12 @@ import java.time.Duration;
  */
 public class PythonServiceClient {
 
-    // Service URL (can be overridden via system property)
-    private static final String DEFAULT_URL = "http://localhost:8000";
-    private static final String BASE_URL = 
-            System.getProperty("tenantwall.parser.url", DEFAULT_URL);
+    
+    private static final String BASE_URL = TenantwallConfig.getParserUrl();
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(3))
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(3))
             .build();
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
@@ -28,17 +27,27 @@ public class PythonServiceClient {
     /**
      * Sends SQL to the Python service for modification.
      *
-     * @param sql       The original SQL query
-     * @param column    Column to filter by (e.g., tenant_id)
-     * @param value     Value to filter by
-     * @param dialect   SQL dialect (mysql, oracle, postgres, etc.)
+     * @param sql     The original SQL query
+     * @param column  Column to filter by (e.g., tenant_id)
+     * @param value   Value to filter by
+     * @param dialect SQL dialect (mysql, oracle, postgres, etc.)
      * @return The modified SQL
      * @throws PythonServiceException if the service is unreachable or fails
      */
-    public static String modify(String sql, String column, String value, String dialect) 
+
+    public static boolean isEnabled() {
+        return TenantwallConfig.isParserEnabled();
+    }
+
+    public static String modify(String sql, String column, String value, String dialect)
             throws PythonServiceException {
+
+        if (!isEnabled()) {
+            throw new PythonServiceException(
+                    "Python parser is not configured (-Dtenantwall.parser.url)");
+        }
+
         try {
-            // Build JSON body
             String jsonBody = buildJsonRequest(sql, column, value, dialect);
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -53,8 +62,8 @@ public class PythonServiceClient {
 
             if (response.statusCode() != 200) {
                 throw new PythonServiceException(
-                        "Python service returned HTTP " + response.statusCode() + ": " 
-                        + response.body());
+                        "Python service returned HTTP " + response.statusCode()
+                                + ": " + response.body());
             }
 
             return extractResult(response.body());
@@ -62,15 +71,19 @@ public class PythonServiceClient {
         } catch (PythonServiceException e) {
             throw e;
         } catch (Exception e) {
+            String detail = e.getMessage();
+            if (detail == null) {
+                detail = e.getClass().getSimpleName()
+                        + (e.getCause() != null ? " (cause: " + e.getCause() + ")" : "");
+            }
             throw new PythonServiceException(
-                    "Failed to call Python service: " + e.getMessage(), e);
+                    "Failed to call Python service at " + BASE_URL + ": " + detail, e);
         }
     }
 
-    /**
-     * Quick health check for the Python service.
-     */
     public static boolean isAvailable() {
+        if (!isEnabled())
+            return false;
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/"))
@@ -93,23 +106,37 @@ public class PythonServiceClient {
                 escapeJson(sql),
                 escapeJson(column),
                 escapeJson(value),
-                escapeJson(dialect)
-        );
+                escapeJson(dialect));
     }
 
     private static String escapeJson(String s) {
-        if (s == null) return "null";
+        if (s == null)
+            return "null";
         StringBuilder sb = new StringBuilder(s.length() + 16);
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"':  sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\n': sb.append("\\n"); break;
-                case '\r': sb.append("\\r"); break;
-                case '\t': sb.append("\\t"); break;
-                case '\b': sb.append("\\b"); break;
-                case '\f': sb.append("\\f"); break;
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                case '\b':
+                    sb.append("\\b");
+                    break;
+                case '\f':
+                    sb.append("\\f");
+                    break;
                 default:
                     if (c < 0x20) {
                         sb.append(String.format("\\u%04x", (int) c));
@@ -142,14 +169,16 @@ public class PythonServiceClient {
     private static String extractJsonString(String json, String key) {
         String search = "\"" + key + "\":";
         int start = json.indexOf(search);
-        if (start == -1) return null;
+        if (start == -1)
+            return null;
 
         start += search.length();
         while (start < json.length() && Character.isWhitespace(json.charAt(start))) {
             start++;
         }
 
-        if (start >= json.length()) return null;
+        if (start >= json.length())
+            return null;
 
         // null value
         if (json.startsWith("null", start)) {
@@ -168,13 +197,26 @@ public class PythonServiceClient {
             if (c == '\\' && i + 1 < json.length()) {
                 char next = json.charAt(++i);
                 switch (next) {
-                    case 'n':  sb.append('\n'); break;
-                    case 'r':  sb.append('\r'); break;
-                    case 't':  sb.append('\t'); break;
-                    case '"':  sb.append('"');  break;
-                    case '\\': sb.append('\\'); break;
-                    case '/':  sb.append('/');  break;
-                    default:   sb.append(next);
+                    case 'n':
+                        sb.append('\n');
+                        break;
+                    case 'r':
+                        sb.append('\r');
+                        break;
+                    case 't':
+                        sb.append('\t');
+                        break;
+                    case '"':
+                        sb.append('"');
+                        break;
+                    case '\\':
+                        sb.append('\\');
+                        break;
+                    case '/':
+                        sb.append('/');
+                        break;
+                    default:
+                        sb.append(next);
                 }
             } else if (c == '"') {
                 break;
@@ -192,6 +234,7 @@ public class PythonServiceClient {
         public PythonServiceException(String message) {
             super(message);
         }
+
         public PythonServiceException(String message, Throwable cause) {
             super(message, cause);
         }

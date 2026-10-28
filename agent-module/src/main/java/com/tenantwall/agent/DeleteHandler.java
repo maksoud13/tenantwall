@@ -1,7 +1,10 @@
 package com.tenantwall.agent;
 
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.delete.Delete;
+
+import java.util.Locale;
 
 /**
  * Handles DELETE statements.
@@ -13,6 +16,14 @@ import net.sf.jsqlparser.statement.delete.Delete;
 public class DeleteHandler {
 
     public static String handle(Delete delete, String column, String value) {
+
+        // ─── Excluded table check ───
+        if (isExcluded(delete.getTable())) {
+            System.out.println("⏭️ [DeleteHandler] Table excluded, skipping: "
+                    + delete.getTable().getName());
+            return delete.toString();
+        }
+
         Expression currentWhere = delete.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
@@ -22,8 +33,9 @@ public class DeleteHandler {
                 System.out.println("🛡️ [DeleteHandler] DELETE without WHERE detected");
             }
 
+            String prefix = extractPrefix(delete.getTable());
             Expression newWhere = SqlModifierUtils.addFilterToWhere(
-                    currentWhere, column, value);
+                    currentWhere, column, value, prefix);
             delete.setWhere(newWhere);
         }
 
@@ -32,5 +44,21 @@ public class DeleteHandler {
         }
 
         return delete.toString();
+    }
+
+    private static String extractPrefix(Table table) {
+        if (table == null)
+            return null;
+        if (table.getAlias() != null && table.getAlias().getName() != null) {
+            return table.getAlias().getName();
+        }
+        return table.getName();
+    }
+
+    private static boolean isExcluded(Table table) {
+        if (table == null || table.getName() == null)
+            return false;
+        return TenantwallConfig.getExcludedTables()
+                .contains(table.getName().toLowerCase(Locale.ROOT));
     }
 }

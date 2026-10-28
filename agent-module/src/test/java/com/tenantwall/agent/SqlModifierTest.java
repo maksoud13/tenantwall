@@ -2,45 +2,41 @@ package com.tenantwall.agent;
 
 import org.junit.jupiter.api.Test;
 
-import com.tenantwall.agent.SqlModifier;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SqlModifierTest {
+class SqlModifierTest {
 
     @Test
-    public void testAddTenantId_SimpleSelect() {
+    void test1_selectWithoutWhere() {
         String sql = "SELECT * FROM users";
-        String tenantId = "TENANT_A";
-        String modifiedSql = SqlModifier.addTenantId(sql, tenantId);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        // لازم يتأكد إن الشرط اتحط صح
-        assertTrue(modifiedSql.contains("WHERE"));
-        assertTrue(modifiedSql.contains("tenant_id = 'TENANT_A'"));
-        System.out.println("✅ Test 1 Passed: " + modifiedSql);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "Should add tenant filter. Got: " + result);
+        assertTrue(result.contains("WHERE"),
+                "Should add WHERE clause. Got: " + result);
     }
 
     @Test
-    public void testAddTenantId_SelectWithWhere() {
+    void test2_selectWithWhere() {
         String sql = "SELECT * FROM users WHERE name = 'Ahmed'";
-        String tenantId = "TENANT_A";
-        String modifiedSql = SqlModifier.addTenantId(sql, tenantId);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        // لازم يتأكد إن الدمج بـ AND حصل
-        assertTrue(modifiedSql.contains("AND"));
-        assertTrue(modifiedSql.contains("tenant_id = 'TENANT_A'"));
-        System.out.println("✅ Test 2 Passed: " + modifiedSql);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "Should add tenant filter. Got: " + result);
+        assertTrue(result.contains("name = 'Ahmed'"),
+                "Original filter should be preserved. Got: " + result);
     }
 
     @Test
-    public void testAddTenantId_SelectWithJoin() {
+    void test3_selectWithJoin() {
         String sql = "SELECT o.* FROM orders o JOIN customers c ON o.customer_name = c.name";
-        String tenantId = "TENANT_A";
-        String modifiedSql = SqlModifier.addTenantId(sql, tenantId);
+        String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        // لازم يتأكد إن الشرط اتضاف في الآخر من غير ما يكسر الـ JOIN
-        assertTrue(modifiedSql.contains("JOIN"));
-        assertTrue(modifiedSql.contains("tenant_id = 'TENANT_A'"));
-        System.out.println("✅ Test 3 Passed: " + modifiedSql);
+        assertTrue(result.contains("tenant_id = 'TENANT_A'"),
+                "Should add tenant filter. Got: " + result);
+        // Should use alias prefix (o.tenant_id) to avoid ambiguity
+        assertTrue(result.matches("(?s).*\\bo\\.tenant_id = 'TENANT_A'.*"),
+                "Should use alias prefix. Got: " + result);
     }
 }
