@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=store_demo;encrypt=false;trustServerCertificate=true
+    username: sa
+    password: "TenantWall123!"
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServer2012Dialect
+        format_sql: false
+    open-in-view: false
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+      encoding: UTF-8
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.storeMSsql: INFO

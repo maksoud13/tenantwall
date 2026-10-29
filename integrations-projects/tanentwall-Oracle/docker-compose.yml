@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: store-oracle
+    environment:
+      ORACLE_PASSWORD: "TenantWall123!"
+      APP_USER: store_demo
+      APP_USER_PASSWORD: "TenantWall123!"
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 90s
+
+volumes:
+  oracle-data:
