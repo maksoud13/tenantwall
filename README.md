@@ -1,79 +1,102 @@
-# TenantWall
+# 🛡️ TenantWall
 
-Stop data leaks in multi-tenant applications. Zero code changes.
+> **Zero-code multi-tenant data isolation for any JDBC database.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Try%20Now-blue)](https://maksoud13.github.io/tenantwall-demo/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./docs/13-license.md)
+[![Java](https://img.shields.io/badge/Java-11%2B-orange)](https://openjdk.org/)
+[![Tests](https://img.shields.io/badge/tests-88%2F88-brightgreen)](./docs/07-test-results.md)
+[![Databases](https://img.shields.io/badge/databases-3-blue)](./docs/05-support-matrix.md)
 
-## The Problem
+TenantWall is a Java agent that intercepts every SQL query at the JDBC layer and injects tenant filters — with **zero application code changes**. It works with any framework that uses JDBC (Spring Boot, Quarkus, plain Java) and any database.
 
-Multi-tenant SaaS applications share one database. Every table has a `tenant_id` column. Every query must filter by it. Developers forget. One missing filter = data leak between customers.
+```diff
+- SELECT * FROM products;                              -- ❌ leaks all tenants
++ SELECT * FROM products WHERE tenant_id = 'ACME';    -- ✅ tenant-isolated
+```
 
-## The Solution
+---
 
-TenantWall is a Java Agent + Python Service that injects tenant filters into SQL queries automatically at the JDBC level.
+## Why TenantWall?
 
-```sql
--- You write:
-SELECT * FROM orders WHERE total > 100;
+| Approach | Code Changes | Coverage | DB Lock-in |
+|---|---|---|---|
+| **TenantWall** | **Zero** | **All JDBC queries** | **None** |
+| Native RLS / VPD | Extensive | DB-specific | Full |
+| ShardingSphere | Moderate | Sharding rules only | Moderate |
+| Hibernate MultiTenancy | Significant | ORM-tracked only | Hibernate |
 
--- TenantWall changes it to:
-SELECT * FROM orders WHERE (total > 100) AND tenant_id = 'TENANT_A';
-No code changes. No new services. No extra latency.
+---
 
-Features
-Simple SELECT, WHERE, JOIN
+## Quick Start (5 minutes)
 
-Subqueries (IN, EXISTS, NOT EXISTS)
+```bash
+# 1) Build the agent
+cd agent-module
+mvn clean install -DskipTests
 
-UNION / INTERSECT / EXCEPT
+# 2) Start a database (any of the examples)
+cd examples/mysql-spring-boot
+docker compose up -d
 
-CTEs (WITH clauses)
+# 3) Run the app with the agent
+java -javaagent:tenantwall-agent.jar=tenantwall.properties \
+     -jar target/store-app.jar
 
-Window Functions
+# 4) Test tenant isolation
+curl -H "X-Tenant-Id: SHOP_ALPHA" http://localhost:8080/api/products
+curl -H "X-Tenant-Id: SHOP_BETA"  http://localhost:8080/api/products
+```
 
-OR Leak Protection
+---
 
-Caffeine Cache (93%+ hit rate)
+## Verified Databases
 
-10+ SQL dialects
+| Database | Version | Tests | Result |
+|---|---|---|---|
+| MySQL | 8.0 | 30 | ✅ 30/30 |
+| SQL Server | 2022 | 29 | ✅ 29/29 |
+| Oracle | XE 21c | 29 | ✅ 29/29 |
+| **Total** | | **88** | **✅ 88/88** |
 
-Excluded tables configuration
+See [full support matrix](./docs/05-support-matrix.md).
 
-Zero code changes
+---
 
-Architecture
-text
-App → Java Agent → [Simple?] → JSqlParser (Local)
-                 → [Complex?] → Python Service (sqlglot)
-                 → [Cached?] → Caffeine
-       ↓
-    Database
-Live Demo
-Try it: https://maksoud13.github.io/tenantwall-demo/
+## Documentation
 
-Project Structure
-text
+| Section | Description |
+|---|---|
+| [Executive Summary](./docs/01-executive-summary.md) | What TenantWall is and why it matters |
+| [The Problem](./docs/02-the-problem.md) | Silent leaks in multi-tenant SaaS |
+| [The Solution](./docs/03-the-solution.md) | How zero-code interception works |
+| [Architecture](./docs/04-architecture.md) | Component diagram and query lifecycle |
+| [Support Matrix](./docs/05-support-matrix.md) | Verified, supported, and planned databases |
+| [Security Model](./docs/06-security-model.md) | What's guaranteed and what's out of scope |
+| [Test Results](./docs/07-test-results.md) | 88/88 tests across 3 databases |
+| [Engineering Journey](./docs/08-engineering-journey.md) | What didn't work and why |
+| [Getting Started](./docs/09-getting-started.md) | 5-minute integration guide |
+| [Configuration](./docs/10-configuration.md) | All config keys and sources |
+| [Roadmap](./docs/11-roadmap.md) | Shipped, in progress, planned |
+| [FAQ](./docs/12-faq.md) | Common questions |
+| [License](./docs/13-license.md) | MIT |
+
+---
+
+## Project Structure
+
+```
 tenantwall/
-├── java-agent/        # Java Agent (ByteBuddy + JSqlParser)
-├── python-parser/     # Python Service (FastAPI + sqlglot)
-├── demo/              # Frontend Demo
-└── docs/              # Documentation
-Quick Start
-Java Agent
-bash
-cd java-agent
-mvn clean install
-Python Parser
-bash
-cd python-parser
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-Roadmap
-☑ Java Agent with ByteBuddy
-☑ SELECT query support (all types)
-☑ OR leak protection
-☑ Caffeine cache
-☑ Python Parser (CTEs, Window Functions)
+├── agent-module/             ← Java agent (the core)
+├── tenantwall-parser/        ← Python FastAPI + sqlglot sidecar
+├── examples/
+│   ├── mysql-spring-boot/
+│   ├── mssql-spring-boot/
+│   └── oracle-spring-boot/
+└── docs/                     ← This documentation
+```
+
+---
+
+## License
+
+MIT — see [docs/13-license.md](./docs/13-license.md).
