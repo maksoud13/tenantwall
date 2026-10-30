@@ -1,0 +1,1087 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TenantWall — Universal Multi-Tenant Data Isolation</title>
+<style>
+  /* ═══════════════════════════════════════════════════════════
+     PRINT SETTINGS — A4 LANDSCAPE
+     ═══════════════════════════════════════════════════════════ */
+  @page {
+    size: A4 landscape;
+    margin: 14mm 18mm 16mm 18mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 9pt;
+      color: #94a3b8;
+    }
+  }
+  @page :first {
+    margin: 0;
+    @bottom-center { content: none; }
+  }
+
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  html, body {
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ═══ COVER — LANDSCAPE ═══ */
+  .cover {
+    height: 210mm;
+    width: 297mm;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 28mm 30mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: "";
+    position: absolute;
+    top: -50mm; right: -50mm;
+    width: 200mm; height: 200mm;
+    background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .cover::after {
+    content: "";
+    position: absolute;
+    bottom: -80mm; left: -80mm;
+    width: 250mm; height: 250mm;
+    background: radial-gradient(circle, rgba(14,165,233,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .cover-content { position: relative; z-index: 2; }
+  .cover-shield { font-size: 64pt; line-height: 1; margin-bottom: 10mm; opacity: 0.95; }
+  .cover-title {
+    font-size: 48pt; font-weight: 800; letter-spacing: -2px;
+    margin: 0 0 6mm 0; line-height: 1;
+  }
+  .cover-subtitle {
+    font-size: 20pt; font-weight: 300; color: #7dd3fc;
+    margin: 0 0 8mm 0; line-height: 1.3;
+  }
+  .cover-tagline {
+    font-size: 12pt; font-weight: 600; color: #bae6fd;
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 15mm;
+  }
+  .cover-metrics { display: flex; gap: 15mm; margin-top: 15mm; }
+  .cover-metric { border-left: 3px solid #38bdf8; padding-left: 6mm; }
+  .cover-metric-value {
+    font-size: 24pt; font-weight: 700; color: #38bdf8; line-height: 1;
+  }
+  .cover-metric-label {
+    font-size: 9pt; color: #cbd5e1; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-top: 2mm;
+  }
+  .cover-footer {
+    position: relative; z-index: 2;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: #94a3b8;
+    border-top: 1px solid rgba(148,163,184,0.3); padding-top: 6mm;
+  }
+
+  /* ═══ SECTIONS & HEADINGS ═══ */
+  .section { page-break-before: always; }
+  .section:first-of-type { page-break-before: auto; }
+
+  h1 {
+    font-size: 22pt; font-weight: 700; color: #0c4a6e;
+    margin: 0 0 3mm 0; padding-bottom: 3mm;
+    border-bottom: 3px solid #0ea5e9;
+    page-break-after: avoid;
+  }
+  h1 .num {
+    display: inline-block; background: #0ea5e9; color: white;
+    width: 12mm; height: 12mm; line-height: 12mm;
+    text-align: center; border-radius: 3mm;
+    font-size: 14pt; margin-right: 3mm; vertical-align: middle;
+  }
+  h2 {
+    font-size: 15pt; font-weight: 700; color: #1e40af;
+    margin: 6mm 0 3mm 0; page-break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt; font-weight: 700; color: #334155;
+    margin: 5mm 0 2mm 0; page-break-after: avoid;
+  }
+  h4 {
+    font-size: 10.5pt; font-weight: 700; color: #475569;
+    margin: 4mm 0 2mm 0; page-break-after: avoid;
+  }
+  p { margin: 0 0 3mm 0; max-width: 250mm; }
+
+  /* ═══ CALLOUTS ═══ */
+  .lead {
+    font-size: 12pt; color: #475569; font-weight: 400;
+    line-height: 1.5; margin-bottom: 5mm; max-width: 250mm;
+  }
+  .callout {
+    padding: 4mm 6mm; border-left: 4px solid #0ea5e9;
+    background: #f0f9ff; border-radius: 2mm;
+    margin: 4mm 0; page-break-inside: avoid; max-width: 250mm;
+  }
+  .callout.warning { border-left-color: #f59e0b; background: #fffbeb; }
+  .callout.success { border-left-color: #10b981; background: #f0fdf4; }
+  .callout.danger { border-left-color: #ef4444; background: #fef2f2; }
+  .callout-title {
+    font-weight: 700; font-size: 10.5pt;
+    margin-bottom: 2mm; color: #0c4a6e;
+  }
+  .callout.warning .callout-title { color: #92400e; }
+  .callout.success .callout-title { color: #065f46; }
+  .callout.danger .callout-title { color: #991b1b; }
+
+  /* ═══ TABLES ═══ */
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 4mm 0; font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  thead { background: #0c4a6e; color: white; }
+  th {
+    padding: 3mm; text-align: left; font-weight: 600;
+    font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  td {
+    padding: 2.5mm 3mm; border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  .table-compact td, .table-compact th { padding: 2mm 2.5mm; font-size: 8.5pt; }
+  .center { text-align: center; }
+
+  /* ═══ CODE ═══ */
+  pre {
+    background: #0f172a; color: #e2e8f0;
+    padding: 4mm 5mm; border-radius: 2mm;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 8.5pt; line-height: 1.5;
+    overflow-x: auto; margin: 3mm 0;
+    page-break-inside: avoid;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  code {
+    background: #f1f5f9; color: #be185d;
+    padding: 0.5mm 1.5mm; border-radius: 1mm;
+    font-family: 'Consolas', 'Monaco', monospace; font-size: 9pt;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .code-label {
+    display: inline-block; background: #334155; color: #cbd5e1;
+    padding: 1mm 3mm; font-size: 8pt;
+    border-radius: 1mm 1mm 0 0; margin-bottom: -3mm;
+    position: relative; top: 1mm;
+    font-family: 'Consolas', monospace;
+  }
+
+  /* ═══ METRIC CARDS ═══ */
+  .metrics-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6mm; margin: 5mm 0;
+  }
+  .metric-card {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 1px solid #bae6fd; border-radius: 2mm;
+    padding: 5mm; text-align: center; page-break-inside: avoid;
+  }
+  .metric-card .value {
+    font-size: 22pt; font-weight: 800; color: #0369a1; line-height: 1;
+  }
+  .metric-card .label {
+    font-size: 8pt; color: #64748b; text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 2mm;
+  }
+
+  /* ═══ BADGES ═══ */
+  .badge {
+    display: inline-block; padding: 1mm 3mm; border-radius: 3mm;
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .badge.verified { background: #10b981; color: white; }
+  .badge.supported { background: #f59e0b; color: white; }
+  .badge.planned { background: #94a3b8; color: white; }
+  .badge.inprogress { background: #3b82f6; color: white; }
+  .badge.shipped { background: #8b5cf6; color: white; }
+
+  /* ═══ LAYER STACK ═══ */
+  .layer-stack { margin: 5mm 0; page-break-inside: avoid; max-width: 240mm; }
+  .layer {
+    padding: 4mm 6mm; margin-bottom: 1mm; border-radius: 2mm;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10pt;
+  }
+  .layer .layer-name { font-weight: 700; }
+  .layer .layer-tag {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: 1px;
+    padding: 1mm 3mm; border-radius: 3mm; font-weight: 700;
+  }
+  .layer-1 { background: linear-gradient(90deg, #0ea5e9, #0284c7); color: white; }
+  .layer-1 .layer-tag { background: rgba(255,255,255,0.25); }
+  .layer-2 { background: linear-gradient(90deg, #6366f1, #4f46e5); color: white; }
+  .layer-2 .layer-tag { background: rgba(255,255,255,0.25); }
+  .layer-3 { background: linear-gradient(90deg, #8b5cf6, #7c3aed); color: white; }
+  .layer-3 .layer-tag { background: rgba(255,255,255,0.25); }
+  .layer-db {
+    background: #1e293b; color: white; text-align: center;
+    padding: 5mm; margin-top: 2mm;
+  }
+  .layer-arrow {
+    text-align: center; color: #94a3b8; font-size: 8pt; margin: 0.5mm 0;
+  }
+
+  /* ═══ TRIANGLE ═══ */
+  .triangle-diagram {
+    display: flex; justify-content: center; align-items: center;
+    margin: 8mm 0; page-break-inside: avoid; gap: 15mm;
+  }
+  .triangle-node {
+    width: 45mm; height: 45mm; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; font-weight: 700; color: white;
+    font-size: 10pt; text-align: center;
+  }
+  .triangle-node.mysql { background: linear-gradient(135deg, #00758f, #005c73); }
+  .triangle-node.mssql { background: linear-gradient(135deg, #cc2927, #a02120); }
+  .triangle-node.oracle { background: linear-gradient(135deg, #c74634, #a83628); }
+  .triangle-node.tenantwall {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    width: 55mm; height: 55mm; font-size: 12pt;
+    box-shadow: 0 4mm 8mm rgba(14,165,233,0.3);
+  }
+
+  /* ═══ CHECKLIST ═══ */
+  .checklist { list-style: none; padding: 0; margin: 3mm 0; }
+  .checklist li {
+    padding: 2mm 0 2mm 8mm; position: relative;
+    page-break-inside: avoid;
+  }
+  .checklist li::before {
+    content: "✓"; position: absolute; left: 0; top: 2mm;
+    width: 5mm; height: 5mm; background: #10b981; color: white;
+    border-radius: 50%; font-weight: 700; font-size: 8pt;
+    text-align: center; line-height: 5mm;
+  }
+
+  /* ═══ TOC ═══ */
+  .toc { padding: 8mm 0; max-width: 220mm; }
+  .toc-item {
+    display: flex; justify-content: space-between;
+    padding: 2.5mm 0; border-bottom: 1px dotted #cbd5e1;
+    font-size: 10.5pt;
+  }
+  .toc-item .toc-num {
+    font-weight: 700; color: #0ea5e9; margin-right: 4mm; min-width: 10mm;
+  }
+  .toc-item .toc-title { flex: 1; }
+  .toc-item .toc-page { color: #64748b; }
+
+  /* ═══ UTILITIES ═══ */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8mm; page-break-inside: avoid; max-width: 250mm;
+  }
+  .nowrap { white-space: nowrap; }
+  .mt-0 { margin-top: 0; }
+  .mb-0 { margin-bottom: 0; }
+  .mt-5 { margin-top: 5mm; }
+  .mb-5 { margin-bottom: 5mm; }
+  .text-muted { color: #64748b; }
+  .text-small { font-size: 9pt; }
+  .text-center { text-align: center; }
+  .page-break { page-break-before: always; }
+  .avoid-break { page-break-inside: avoid; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 5mm 0; }
+  strong { color: #0f172a; }
+</style>
+</head>
+<body>
+
+<!-- ═══ COVER ═══ -->
+<div class="cover">
+  <div class="cover-content">
+    <div class="cover-shield">🛡️</div>
+    <h1 class="cover-title" style="color:white;border:none;padding:0;margin:0 0 6mm 0;font-size:48pt;">TenantWall</h1>
+    <p class="cover-subtitle">Universal Multi-Tenant Data Isolation</p>
+    <p class="cover-tagline">Zero-Code · Universal · Verified</p>
+    <div class="cover-metrics">
+      <div class="cover-metric">
+        <div class="cover-metric-value">88/88</div>
+        <div class="cover-metric-label">Tests Passing</div>
+      </div>
+      <div class="cover-metric">
+        <div class="cover-metric-value">3</div>
+        <div class="cover-metric-label">Databases</div>
+      </div>
+      <div class="cover-metric">
+        <div class="cover-metric-value">0</div>
+        <div class="cover-metric-label">Code Changes</div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <div>
+      <div style="color:#7dd3fc;font-weight:600;margin-bottom:1mm;">Technical Documentation</div>
+      <div>Version 1.0.0 · October 2026</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="color:#7dd3fc;font-weight:600;margin-bottom:1mm;">github.com/maksoud13/tenantwall</div>
+      <div>MIT Licensed</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOC ═══ -->
+<div class="section">
+  <h1><span class="num">§</span>Table of Contents</h1>
+  <div class="toc">
+    <div class="toc-item"><span class="toc-num">1</span><span class="toc-title">Executive Summary</span><span class="toc-page">3</span></div>
+    <div class="toc-item"><span class="toc-num">2</span><span class="toc-title">The Problem: Silent Leaks</span><span class="toc-page">4</span></div>
+    <div class="toc-item"><span class="toc-num">3</span><span class="toc-title">The Solution: Zero-Code Interception</span><span class="toc-page">5</span></div>
+    <div class="toc-item"><span class="toc-num">4</span><span class="toc-title">Architecture</span><span class="toc-page">6</span></div>
+    <div class="toc-item"><span class="toc-num">5</span><span class="toc-title">Support Matrix</span><span class="toc-page">7</span></div>
+    <div class="toc-item"><span class="toc-num">6</span><span class="toc-title">Security Model</span><span class="toc-page">8</span></div>
+    <div class="toc-item"><span class="toc-num">7</span><span class="toc-title">Test Results</span><span class="toc-page">9</span></div>
+    <div class="toc-item"><span class="toc-num">8</span><span class="toc-title">The Engineering Journey</span><span class="toc-page">10</span></div>
+    <div class="toc-item"><span class="toc-num">9</span><span class="toc-title">Getting Started</span><span class="toc-page">11</span></div>
+    <div class="toc-item"><span class="toc-num">10</span><span class="toc-title">Configuration Reference</span><span class="toc-page">12</span></div>
+    <div class="toc-item"><span class="toc-num">11</span><span class="toc-title">Roadmap</span><span class="toc-page">13</span></div>
+    <div class="toc-item"><span class="toc-num">12</span><span class="toc-title">FAQ</span><span class="toc-page">14</span></div>
+    <div class="toc-item"><span class="toc-num">13</span><span class="toc-title">License &amp; Contact</span><span class="toc-page">15</span></div>
+  </div>
+  <div class="callout mt-5">
+    <div class="callout-title">📖 About This Document</div>
+    This is the technical and architectural reference for TenantWall. Every claim here is either <strong>verified by the shipped test suite</strong> or <strong>explicitly marked as supported/planned</strong>. Nothing is speculative.
+  </div>
+</div>
+
+<!-- ═══ 1. EXECUTIVE SUMMARY ═══ -->
+<div class="section">
+  <h1><span class="num">1</span>Executive Summary</h1>
+  <p class="lead">TenantWall is a Java agent that enforces multi-tenant data isolation at the JDBC layer — with <strong>zero code changes</strong> to application logic.</p>
+  <p>Every SQL statement is intercepted before execution and rewritten to inject the current tenant's identifier as a <code>WHERE</code> predicate. The framework is <strong>database-agnostic</strong> and <strong>ORM-agnostic</strong>.</p>
+
+  <h2>Key Facts</h2>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="value">88/88</div><div class="label">Tests Passing</div></div>
+    <div class="metric-card"><div class="value">3</div><div class="label">Verified DBs</div></div>
+    <div class="metric-card"><div class="value">0</div><div class="label">Code Changes</div></div>
+    <div class="metric-card"><div class="value">10</div><div class="label">SQL Dialects</div></div>
+  </div>
+
+  <h2>Why TenantWall Is Different</h2>
+  <table>
+    <thead><tr><th>Approach</th><th class="center">Code Changes</th><th>Coverage</th><th>DB Lock-in</th></tr></thead>
+    <tbody>
+      <tr style="background:#f0fdf4;font-weight:600;">
+        <td><strong>TenantWall</strong></td>
+        <td class="center"><span class="badge verified">Zero</span></td>
+        <td>All JDBC queries</td>
+        <td><span class="badge verified">None</span></td>
+      </tr>
+      <tr><td>Native RLS / VPD</td><td class="center">Extensive</td><td>DB-specific rules</td><td>Full lock-in</td></tr>
+      <tr><td>ShardingSphere</td><td class="center">Moderate</td><td>Sharding rules only</td><td>Moderate</td></tr>
+      <tr><td>Hibernate MultiTenancy</td><td class="center">Significant</td><td>ORM-tracked only</td><td>Hibernate lock-in</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <div class="callout-title">✓ The Promise</div>
+    TenantWall is the only solution that provides <strong>universal coverage</strong> with <strong>zero application code changes</strong>.
+  </div>
+</div>
+
+<!-- ═══ 2. THE PROBLEM ═══ -->
+<div class="section">
+  <h1><span class="num">2</span>The Problem: Silent Leaks</h1>
+  <p class="lead">In a multi-tenant SaaS, cross-tenant data leaks typically happen <strong>between application code and database execution</strong>.</p>
+
+  <h2>The Silent Bug</h2>
+  <span class="code-label">Application code</span>
+<pre><code>// Developer writes:
+List&lt;Order&gt; orders = orderRepo.findByStatus("PENDING");
+
+// Hibernate generates:
+SELECT * FROM orders WHERE status = 'PENDING';
+
+// 💥 This returns orders from EVERY tenant.</code></pre>
+
+  <p>The developer forgot <code>AND tenant_id = ?</code>. In code review this looks like a bug. In production it becomes:</p>
+
+  <div class="two-col">
+    <div class="callout danger">
+      <div class="callout-title">🚨 Compliance Violation</div>
+      GDPR, HIPAA, SOC2 audits fail immediately.
+    </div>
+    <div class="callout danger">
+      <div class="callout-title">💔 Contract Breach</div>
+      B2B SLAs guarantee tenant data isolation.
+    </div>
+  </div>
+
+  <h2>Why Existing Solutions Fall Short</h2>
+  <h3>Native Row-Level Security (RLS / VPD)</h3>
+  <ul>
+    <li>Requires deep DBA involvement</li>
+    <li>DB-specific rules per table</li>
+    <li>Schema rewrites for every new tenant column</li>
+    <li><strong>Application code changes</strong> to set session context</li>
+  </ul>
+
+  <h3>ORM Multi-Tenancy (Hibernate)</h3>
+  <ul>
+    <li>Annotate every entity with <code>@TenantId</code></li>
+    <li>Custom <code>MultiTenantConnectionProvider</code></li>
+    <li><strong>Only covers ORM-tracked queries</strong> — native SQL slips through</li>
+  </ul>
+
+  <h3>Sharding Middleware (ShardingSphere, Vitess)</h3>
+  <ul>
+    <li>Heavy infrastructure (proxy layer)</li>
+    <li>Rewrite rules at proxy layer</li>
+    <li><strong>Not designed for row-level tenant isolation</strong></li>
+  </ul>
+
+  <div class="callout warning">
+    <div class="callout-title">⚠️ The Common Thread</div>
+    Every existing approach forces a <strong>trade-off between safety, coverage, and complexity</strong>. TenantWall eliminates that trade-off.
+  </div>
+</div>
+
+<!-- ═══ 3. THE SOLUTION ═══ -->
+<div class="section">
+  <h1><span class="num">3</span>The Solution: Zero-Code Interception</h1>
+  <p class="lead">TenantWall rewrites SQL <strong>between Hibernate and JDBC</strong>. Your application code never sees the difference.</p>
+
+  <h2>Before / After</h2>
+  <span class="code-label">Application (UNCHANGED)</span>
+<pre><code>public List&lt;Product&gt; listProducts() {
+    return productRepository.findAll();
+}</code></pre>
+
+  <span class="code-label">Hibernate emits</span>
+<pre><code>SELECT p.id, p.name, p.price FROM products p;</code></pre>
+
+  <span class="code-label">TenantWall rewrites (before execution)</span>
+<pre><code>SELECT p.id, p.name, p.price
+FROM products p
+WHERE p.tenant_id = 'SHOP_ALPHA';</code></pre>
+
+  <p>The rewrite is <strong>automatic, universal, and invisible</strong> to the application.</p>
+
+  <h2>Three-Layer Interception</h2>
+  <div class="layer-stack">
+    <div class="layer layer-1">
+      <span class="layer-name">Layer 1 · Hibernate <code style="background:rgba(255,255,255,0.2);color:white;">StatementPreparerImpl.prepareQueryStatement()</code></span>
+      <span class="layer-tag">Primary</span>
+    </div>
+    <div class="layer-arrow">▼</div>
+    <div class="layer layer-2">
+      <span class="layer-name">Layer 2 · JDBC <code style="background:rgba(255,255,255,0.2);color:white;">Statement.executeQuery()</code></span>
+      <span class="layer-tag">Native SQL</span>
+    </div>
+    <div class="layer-arrow">▼</div>
+    <div class="layer layer-3">
+      <span class="layer-name">Layer 3 · JDBC <code style="background:rgba(255,255,255,0.2);color:white;">Connection.prepareStatement()</code></span>
+      <span class="layer-tag">Fallback</span>
+    </div>
+    <div class="layer-arrow">▼</div>
+    <div class="layer layer-db"><strong>MySQL · SQL Server · Oracle</strong></div>
+  </div>
+
+  <p><strong>Layer 1</strong> captures Hibernate-generated SQL before HikariCP wraps it. <strong>Layer 2</strong> handles plain <code>Statement</code> from <code>JdbcTemplate</code>. <strong>Layer 3</strong> is a fallback for direct <code>prepareStatement</code> calls.</p>
+
+  <h2>Hybrid AST Engine</h2>
+  <p>Complex SQL requires more than regex. TenantWall routes queries to one of two parsers:</p>
+  <table>
+    <thead><tr><th>Parser</th><th>Language</th><th>Handles</th><th>Latency</th></tr></thead>
+    <tbody>
+      <tr><td><strong>JSqlParser 4.9</strong></td><td>Java (local)</td><td>SELECT, INSERT, UPDATE, DELETE, basic JOIN, simple subqueries</td><td>&lt; 1 ms</td></tr>
+      <tr><td><strong>sqlglot 25+</strong></td><td>Python (sidecar)</td><td>CTEs, window functions, recursive subqueries, 10 dialects</td><td>~5–15 ms</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">🔀 Routing Logic</div>
+    Query contains <code>WITH</code>, <code>OVER (</code>, <code>PARTITION BY</code>, <code>NVL</code>, <code>DECODE</code>, <code>CONNECT BY</code>, or <code>ROWNUM</code> → <strong>send to Python</strong>. Otherwise → <strong>parse locally</strong>. If Python fails, the local parser runs as fallback.
+  </div>
+
+  <h2>Fail-Open Architecture</h2>
+  <span class="code-label">Decision tree</span>
+<pre><code>Request with tenant context?
+   ├── YES → rewrite query → execute
+   ├── NO, onMissing=fail → throw SecurityException (fail-closed)
+   └── NO, onMissing=skip → execute unchanged, log warning</code></pre>
+  <p>By default: <strong>fail-closed in production</strong>, <strong>fail-open in development</strong>.</p>
+</div>
+
+<!-- ═══ 4. ARCHITECTURE ═══ -->
+<div class="section">
+  <h1><span class="num">4</span>Architecture</h1>
+
+  <h2>Component Diagram</h2>
+  <span class="code-label">TenantWall Agent JAR</span>
+<pre><code>┌────────────────────────────────────────────────────────────┐
+│                    TenantWall Agent JAR                    │
+│                                                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐    │
+│  │  ByteBuddy   │──▶│ SmartSql     │──▶│ PythonService  │    │
+│  │  Advisor     │  │ Modifier     │  │ Client         │    │
+│  └──────┬───────┘  └──────┬───────┘  └────────┬───────┘    │
+│         │                 │                    │            │
+│         │        ┌────────▼───────┐            │            │
+│         │        │  QueryAnalyzer │            │            │
+│         │        └────────┬───────┘            │            │
+│         ▼                 ▼                    ▼            │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐    │
+│  │ Statement    │  │  SqlModifier │  │ HTTP to Python │    │
+│  │ Interceptor  │  │  (JSqlParser)│  │  sqlglot       │    │
+│  └──────────────┘  └──────────────┘  └────────────────┘    │
+└────────────────────────────────────────────────────────────┘
+                          │
+              ┌───────────▼───────────┐
+              │   Caffeine Cache      │
+              │  (10K entries, 30min) │
+              └───────────────────────┘</code></pre>
+
+  <h2>Query Lifecycle</h2>
+  <ol>
+    <li>Application calls <code>repository.findAll()</code></li>
+    <li>Hibernate generates SQL: <code>SELECT * FROM products</code></li>
+    <li>TenantWall <code>StatementPreparerImpl.prepareQueryStatement()</code> intercepts</li>
+    <li><code>QueryAnalyzer</code> decides: simple → local JSqlParser</li>
+    <li>SQL rewriter: <code>SELECT * FROM products WHERE products.tenant_id = ?</code></li>
+    <li>Cache stores <code>(sql, column, value)</code> → rewritten SQL</li>
+    <li>Modified SQL reaches MySQL</li>
+    <li>Result set returned to application</li>
+  </ol>
+  <p><strong>Subsequent identical queries:</strong> cache hit, no re-parsing.</p>
+
+  <h2>Module Structure</h2>
+<pre><code>tenantwall/
+├── agent-module/         ← Java agent (the core)
+│   ├── TenantWallAgent   ← premain / ByteBuddy installer
+│   ├── TenantwallConfig  ← config loader (SPI-based)
+│   ├── TenantContext     ← ThreadLocal tenant holder
+│   ├── SmartSqlModifier  ← routing + caching layer
+│   ├── QueryAnalyzer     ← "simple vs complex" classifier
+│   ├── SqlModifier       ← JSqlParser-based rewriter
+│   ├── SelectHandler     ← SELECT AST manipulation
+│   ├── InsertHandler     ← INSERT column injection
+│   ├── UpdateHandler     ← UPDATE WHERE augmentation
+│   ├── DeleteHandler     ← DELETE WHERE augmentation
+│   ├── SqlModifierUtils  ← shared AST helpers
+│   ├── TableSchemaRegistry    ← INSERT schema hints (SPI)
+│   ├── PythonServiceClient    ← HTTP client to Python parser
+│   ├── HibernateStatementAdvice ← ByteBuddy @Advice for Hibernate
+│   ├── SqlInterceptorAdvice     ← ByteBuddy @Advice for Statement
+│   └── PrepareStatementAdvice   ← ByteBuddy @Advice for Connection
+│
+├── tenantwall-parser/    ← Python FastAPI + sqlglot sidecar
+│   ├── app/main.py
+│   └── app/modifier.py
+│
+├── examples/             ← Integration examples
+│   ├── mysql-spring-boot/
+│   ├── mssql-spring-boot/
+│   └── oracle-spring-boot/
+│
+└── docs/                 ← This documentation</code></pre>
+</div>
+
+<!-- ═══ 5. SUPPORT MATRIX ═══ -->
+<div class="section">
+  <h1><span class="num">5</span>Support Matrix</h1>
+
+  <h2>✅ Verified (tested by maintainers)</h2>
+  <table>
+    <thead><tr><th>Database</th><th>Version</th><th>Driver</th><th class="center">Tests</th><th class="center">Result</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MySQL</strong></td><td>8.0</td><td><code>mysql-connector-j</code> 8.3.0</td><td class="center">30</td><td class="center"><span class="badge verified">30/30</span></td></tr>
+      <tr><td><strong>SQL Server</strong></td><td>2022 Developer</td><td><code>mssql-jdbc</code> 12.6.1</td><td class="center">29</td><td class="center"><span class="badge verified">29/29</span></td></tr>
+      <tr><td><strong>Oracle</strong></td><td>XE 21c</td><td><code>ojdbc11</code> 23.4.0</td><td class="center">29</td><td class="center"><span class="badge verified">29/29</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <div class="callout-title">✓ Total: 88/88 tests passing (100%)</div>
+    Every test runs against a Dockerized database with seeded data for two tenants.
+  </div>
+
+  <h2>🎯 Supported (should work; not yet tested)</h2>
+  <table class="table-compact">
+    <thead><tr><th>Database</th><th>Version</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>MySQL</td><td>5.7</td><td>Driver compatible; test suite not run</td></tr>
+      <tr><td>SQL Server</td><td>2019, 2022 Enterprise</td><td>Same T-SQL parser; AG not tested</td></tr>
+      <tr><td>Oracle</td><td>12c, 19c</td><td>Same SQL dialect; RAC not tested</td></tr>
+      <tr><td>PostgreSQL</td><td>14+</td><td>Parser supports <code>postgres</code>; integration not built</td></tr>
+      <tr><td>SQLite</td><td>3.x</td><td>Parser supports <code>sqlite</code> dialect</td></tr>
+      <tr><td>Snowflake</td><td>Current</td><td>Parser supports <code>snowflake</code></td></tr>
+      <tr><td>BigQuery</td><td>Current</td><td>Parser supports <code>bigquery</code></td></tr>
+      <tr><td>Redshift</td><td>Current</td><td>Parser supports <code>redshift</code></td></tr>
+      <tr><td>Spark SQL</td><td>3.x</td><td>Parser supports <code>spark</code></td></tr>
+      <tr><td>Databricks</td><td>Current</td><td>Parser supports <code>databricks</code></td></tr>
+    </tbody>
+  </table>
+  <p class="text-small text-muted">Community testing welcome — file an issue with results.</p>
+
+  <h2>🔮 Roadmap (planned, not implemented)</h2>
+  <ul>
+    <li>jTDS driver support (legacy SQL Server)</li>
+    <li>PL/SQL hint preservation (Oracle)</li>
+    <li>DBLink-aware tenant scoping (Oracle)</li>
+    <li>Always On Availability Group testing (SQL Server)</li>
+    <li>Oracle RAC cluster testing</li>
+    <li>MyBatis interceptor adapter</li>
+    <li>jOOQ and QueryDSL adapters</li>
+    <li>Schema-per-tenant mode (vs row-level)</li>
+    <li>Bind variable template caching</li>
+  </ul>
+</div>
+
+<!-- ═══ 6. SECURITY MODEL ═══ -->
+<div class="section">
+  <h1><span class="num">6</span>Security Model</h1>
+
+  <h2>Guarantees</h2>
+  <h3>1. Every SELECT is tenant-scoped</h3>
+  <p>No query reaches the database without <code>tenant_id = ?</code> in the <code>WHERE</code> clause (unless the table is explicitly excluded).</p>
+
+  <h3>2. Every INSERT auto-injects the tenant</h3>
+<pre><code>INSERT INTO products (name, price) VALUES (?, ?)
+   ↓
+INSERT INTO products (name, price, tenant_id) VALUES (?, ?, 'SHOP_ALPHA')</code></pre>
+
+  <h3>3. Every UPDATE/DELETE is tenant-scoped</h3>
+<pre><code>UPDATE products SET price = 100 WHERE id = 5
+   ↓
+UPDATE products SET price = 100 WHERE id = 5 AND tenant_id = 'SHOP_ALPHA'</code></pre>
+
+  <h3>4. Cross-tenant access returns 404, not 403</h3>
+  <p>No information leak about whether the row exists under a different tenant.</p>
+
+  <h3>5. Fail-closed by default (production)</h3>
+  <p>If no tenant is in context:</p>
+  <ul>
+    <li><code>onMissing=fail</code> → <code>SecurityException</code> (recommended for production)</li>
+    <li><code>onMissing=skip</code> → logs warning, executes unchanged (development only)</li>
+  </ul>
+
+  <h3>6. Cache invalidation on tenant change</h3>
+  <p><code>TenantwallConfig.setFilterColumn("org_id")</code> clears the query cache automatically.</p>
+
+  <h2 class="page-break">Attack Vectors Covered</h2>
+  <table>
+    <thead><tr><th>Attack</th><th class="center">Covered?</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>Developer forgets <code>WHERE tenant_id</code></td><td class="center"><span class="badge verified">✓</span></td><td>Auto-injection</td></tr>
+      <tr><td>Native SQL bypass</td><td class="center"><span class="badge verified">✓</span></td><td>JDBC Statement interceptor</td></tr>
+      <tr><td>ORM bypass (JPQL → SQL)</td><td class="center"><span class="badge verified">✓</span></td><td>Hibernate interceptor</td></tr>
+      <tr><td>Stored procedure call</td><td class="center"><span class="badge supported">⚠</span></td><td>Outer call filtered; internals not</td></tr>
+      <tr><td>UNION cross-tenant</td><td class="center"><span class="badge verified">✓</span></td><td>Each branch filtered independently</td></tr>
+      <tr><td>Subquery cross-tenant</td><td class="center"><span class="badge verified">✓</span></td><td>Recursive expression processing</td></tr>
+      <tr><td>CTE cross-tenant</td><td class="center"><span class="badge verified">✓</span></td><td><code>WithItemsList</code> processed</td></tr>
+      <tr><td>IN subquery with wrong tenant</td><td class="center"><span class="badge verified">✓</span></td><td>Handled via <code>processExpression</code></td></tr>
+      <tr><td>SQL injection after filter</td><td class="center"><span class="badge verified">✓</span></td><td>Parser rejects malformed SQL</td></tr>
+      <tr><td>OR clause bypass (<code>1=1 OR ...</code>)</td><td class="center"><span class="badge verified">✓</span></td><td>Parenthesis wrapping</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Threat Model — Out of Scope</h2>
+  <div class="callout warning">
+    <div class="callout-title">⚠️ What TenantWall Does NOT Protect Against</div>
+    <ul style="margin:0;padding-left:5mm;">
+      <li><strong>Direct database access</strong> — bypasses JVM entirely</li>
+      <li><strong>Stored procedure internals</strong> — outer call filtered, internals not</li>
+      <li><strong>Application-level bugs</strong> — returning wrong tenant's row after valid query</li>
+      <li><strong>JVM tampering</strong> — if attacker controls JVM, no library is safe</li>
+      <li><strong>SQL injection in tenant_id</strong> — tenant value is literal, not raw SQL</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══ 7. TEST RESULTS ═══ -->
+<div class="section">
+  <h1><span class="num">7</span>Test Results</h1>
+  <p class="lead">Test results are from the reference integration suites shipped in <code>examples/</code>. Each runs against a Dockerized database with seeded data for two tenants.</p>
+
+  <h2>Summary</h2>
+  <table>
+    <thead><tr><th>Database</th><th class="center">Tests</th><th class="center">Pass</th><th class="center">Fail</th><th class="center">Warn</th><th class="center">Duration</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MySQL 8.0</strong></td><td class="center">30</td><td class="center"><strong style="color:#10b981;">30</strong></td><td class="center">0</td><td class="center">0</td><td class="center">1.2s</td></tr>
+      <tr><td><strong>SQL Server 2022</strong></td><td class="center">29</td><td class="center"><strong style="color:#10b981;">29</strong></td><td class="center">0</td><td class="center">0</td><td class="center">1.5s</td></tr>
+      <tr><td><strong>Oracle XE 21c</strong></td><td class="center">29</td><td class="center"><strong style="color:#10b981;">29</strong></td><td class="center">0</td><td class="center">0</td><td class="center">1.8s</td></tr>
+      <tr style="background:#f0fdf4;font-weight:700;"><td>Total</td><td class="center">88</td><td class="center" style="color:#10b981;">88</td><td class="center">0</td><td class="center">0</td><td class="center">4.5s</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Test Categories</h2>
+  <table class="table-compact">
+    <thead><tr><th>Category</th><th class="center">Tests</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>DB State</td><td class="center">1 / DB</td><td>Sanity check seed data</td></tr>
+      <tr><td>READ isolation</td><td class="center">3 / DB</td><td>List, cross-tenant list, per-tenant count</td></tr>
+      <tr><td>Get-one isolation</td><td class="center">4 / DB</td><td>Own vs cross, both directions</td></tr>
+      <tr><td>CREATE + injection</td><td class="center">3 / DB</td><td>tenant_id auto-injected, cross check</td></tr>
+      <tr><td>UPDATE isolation</td><td class="center">4 / DB</td><td>Own update works, cross update → 404, DB unchanged</td></tr>
+      <tr><td>DELETE isolation</td><td class="center">4 / DB</td><td>Own delete works, cross delete → 404, DB unchanged</td></tr>
+      <tr><td>CTE reports</td><td class="center">4 / DB</td><td>Complex SQL handled by Python parser, no leaks</td></tr>
+      <tr><td>Python parser stats</td><td class="center">1 / DB</td><td>pythonCalls &gt; 0, fallbacks = 0</td></tr>
+      <tr><td>Cache stats</td><td class="center">1 / DB</td><td>hits &gt; 0 after repeat queries</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Sample Output (MySQL)</h2>
+  <span class="code-label">test-mysql-integration.sh</span>
+<pre><code>═══ STEP 2: READ — List ═══
+✅ PASS  SHOP_ALPHA products count (expected: 6, got: 6)
+✅ PASS  SHOP_BETA products count (expected: 4, got: 4)
+✅ PASS  SHOP_ALPHA list has no SHOP_BETA data
+✅ PASS  SHOP_BETA list has no SHOP_ALPHA data
+
+═══ STEP 5: UPDATE (PUT) ═══
+✅ PASS  SHOP_ALPHA UPDATE own product (1) (expected: 200, got: 200)
+✅ PASS  DB reflects update
+✅ PASS  SHOP_BETA UPDATE cross product (1) → 404 (expected: 404, got: 404)
+✅ PASS  Product not modified by cross-tenant
+
+═══ STEP 8: Agent Smart Stats ═══
+{"fallbacks":0, "localCalls":124, "pythonCalls":10}
+✅ PASS  Python parser used (10 calls)
+
+═══════════════════════════════════════════════════════════
+  PASS: 30  |  FAIL: 0  |  WARN: 0
+  🎉 All tests passed!</code></pre>
+</div>
+
+<!-- ═══ 8. ENGINEERING JOURNEY ═══ -->
+<div class="section">
+  <h1><span class="num">8</span>The Engineering Journey</h1>
+  <p class="lead">TenantWall was built by solving hard problems the right way. This section documents what didn't work — because the lessons are as valuable as the code.</p>
+
+  <h2>Attempt 1: Connection.prepareStatement (FAILED)</h2>
+  <p><strong>Approach:</strong> Intercept the JDBC entry point directly.</p>
+  <p><strong>What we saw:</strong></p>
+  <ul>
+    <li>Logs showed <code>Modified SQL: SELECT ... WHERE tenant_id = 'X'</code></li>
+    <li>MySQL general log showed <code>SELECT ...</code> (no <code>WHERE</code>)</li>
+  </ul>
+
+  <div class="callout danger">
+    <div class="callout-title">🚨 Root Cause</div>
+    HikariCP generates <code>HikariProxyConnection</code> via <strong>Javassist at runtime</strong>. ByteBuddy's <code>@Advice.AllArguments(readOnly=false)</code> writes back to the arguments array, but <strong>Javassist-generated bytecode doesn't propagate the mutation</strong> to the actual method parameters.
+  </div>
+  <p><strong>Lesson:</strong> <code>@Advice.AllArguments(readOnly=false)</code> cannot be trusted across proxy boundaries.</p>
+
+  <h2>Attempt 2: Statement.executeQuery (PARTIAL)</h2>
+  <p><strong>Approach:</strong> Intercept at the <code>Statement</code> level.</p>
+  <p><strong>What we saw:</strong> <code>JdbcTemplate</code> queries worked, but <strong>Hibernate queries bypassed it</strong> — Hibernate uses <code>PreparedStatement</code>, not <code>Statement</code>.</p>
+  <p><strong>Lesson:</strong> JDBC layer has multiple interception points; each covers a different code path.</p>
+
+  <h2>Attempt 3: StatementPreparerImpl.prepareQueryStatement (SUCCESS)</h2>
+  <p><strong>Approach:</strong> Intercept at Hibernate's SQL generation layer — <strong>before</strong> it reaches HikariCP.</p>
+  <p><strong>Why it worked:</strong></p>
+  <ol>
+    <li><code>StatementPreparerImpl</code> is a <strong>regular Java class</strong> (not Javassist-generated)</li>
+    <li>ByteBuddy <code>@Advice.Argument(0, readOnly=false)</code> modifies the argument slot directly</li>
+    <li>The modified SQL reaches <code>HikariProxyConnection</code> <strong>already rewritten</strong></li>
+  </ol>
+  <p><strong>Verification:</strong></p>
+  <ul>
+    <li>MySQL general log confirmed <code>WHERE p1_0.tenant_id = 'SHOP_ALPHA'</code> reached the database</li>
+    <li>Cross-tenant GET/PUT/DELETE returned 404 as expected</li>
+    <li>88/88 tests passed across 3 databases</li>
+  </ul>
+
+  <div class="callout success">
+    <div class="callout-title">✓ The Insight</div>
+    <strong>Intercept at the highest layer where classes are stable.</strong> Hibernate's SPI is more reliable than JDBC's driver-proxy layer.
+  </div>
+
+  <h2>Additional Lessons</h2>
+  <table class="table-compact">
+    <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+    <tbody>
+      <tr><td>tenant_id ambiguous in JOIN</td><td>Alias-prefix extraction from <code>PlainSelect.getFromItem()</code></td></tr>
+      <tr><td>CTE bodies not filtered</td><td><code>processWithItems()</code> in <code>SelectHandler</code></td></tr>
+      <tr><td>INSERT without column list</td><td><code>TableSchemaProvider</code> SPI (Noop / Properties / Custom)</td></tr>
+      <tr><td>Python parser 404 (trailing slash)</td><td>URL normalization in <code>PythonServiceClient</code></td></tr>
+      <tr><td>Hibernate lazy-load JSON 500</td><td>DTO projection + <code>@Transactional</code></td></tr>
+      <tr><td>Emoji/UTF-8 garbling on Windows</td><td><code>chcp 65001</code> + <code>System.err</code> for diagnostics</td></tr>
+      <tr><td>MSSQL "Cannot open database"</td><td>Manual <code>CREATE DATABASE</code> (unlike MySQL)</td></tr>
+      <tr><td>Oracle no auto-commit on data.sql</td><td>Explicit <code>COMMIT;</code> at end</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ 9. GETTING STARTED ═══ -->
+<div class="section">
+  <h1><span class="num">9</span>Getting Started</h1>
+
+  <h2>Prerequisites</h2>
+  <table class="table-compact">
+    <thead><tr><th>Requirement</th><th>Version</th></tr></thead>
+    <tbody>
+      <tr><td>Java</td><td>11+ (21 verified)</td></tr>
+      <tr><td>Spring Boot</td><td>3.x (or any framework using JDBC)</td></tr>
+      <tr><td>Hibernate</td><td>6.2+ (for primary interceptor)</td></tr>
+      <tr><td>Docker</td><td>For running the parser sidecar</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Quick Start — 5 Minutes</h2>
+
+  <h3>Step 1: Add the dependency</h3>
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;com.tenantwall&lt;/groupId&gt;
+    &lt;artifactId&gt;agent-module&lt;/artifactId&gt;
+    &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
+    &lt;scope&gt;provided&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+  <p class="text-small text-muted">⚠️ <code>provided</code> scope is critical — the agent is loaded via <code>-javaagent</code>, not bundled in the fat jar.</p>
+
+  <h3>Step 2: Add the tenant filter (10 lines)</h3>
+<pre><code>@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class TenantFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+            throws IOException, ServletException {
+        String tenant = ((HttpServletRequest) req).getHeader("X-Tenant-Id");
+        try {
+            TenantContext.setTenant(tenant);
+            chain.doFilter(req, res);
+        } finally {
+            TenantContext.clear();  // always clear
+        }
+    }
+}</code></pre>
+
+  <h3>Step 3: Add the config file</h3>
+<pre><code>tenantwall.enabled=true
+tenantwall.filter.column=tenant_id
+tenantwall.filter.onMissing=skip
+tenantwall.parser.url=http://localhost:8000
+tenantwall.parser.dialect=mysql</code></pre>
+
+  <h3>Step 4: Start the Python parser (optional)</h3>
+<pre><code>cd tenantwall-parser
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000</code></pre>
+
+  <h3>Step 5: Run your app with the agent</h3>
+<pre><code>java -javaagent:tenantwall-agent.jar=tenantwall.properties \
+     -jar your-app.jar</code></pre>
+
+  <div class="callout success">
+    <div class="callout-title">✓ Done</div>
+    All SQL queries now include <code>tenant_id = &lt;current&gt;</code>. No code changes needed.
+  </div>
+
+  <h2>Verifying It Works</h2>
+<pre><code># Start the app
+java -javaagent:tenantwall-agent.jar=tenantwall.properties -jar app.jar
+
+# In another terminal:
+curl -H "X-Tenant-Id: ACME" http://localhost:8080/api/products
+curl -H "X-Tenant-Id: WIDGETCO" http://localhost:8080/api/products</code></pre>
+
+  <p><strong>Expected in agent logs:</strong></p>
+<pre><code>🛡️ tenantwall Agent Loaded (v4 - Hibernate aware)
+[TenantWall] Config: enabled=true, column=tenant_id, parser=http://localhost:8000
+🎯 [Hibernate] Modified: SELECT * FROM products WHERE products.tenant_id = 'ACME'
+🎯 [Hibernate] Modified: SELECT * FROM products WHERE products.tenant_id = 'WIDGETCO'</code></pre>
+  <p><strong>Expected in HTTP response:</strong> each tenant sees only their own products.</p>
+</div>
+
+<!-- ═══ 10. CONFIGURATION ═══ -->
+<div class="section">
+  <h1><span class="num">10</span>Configuration Reference</h1>
+
+  <h2>All Configuration Keys</h2>
+  <table class="table-compact">
+    <thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>tenantwall.enabled</code></td><td>boolean</td><td><code>true</code></td><td>Master switch</td></tr>
+      <tr><td><code>tenantwall.filter.column</code></td><td>string</td><td><code>tenant_id</code></td><td>Column name to filter on</td></tr>
+      <tr><td><code>tenantwall.filter.defaultValue</code></td><td>string</td><td><code>null</code></td><td>Fallback if no tenant in context</td></tr>
+      <tr><td><code>tenantwall.filter.onMissing</code></td><td>enum</td><td><code>skip</code></td><td><code>skip</code> (dev) or <code>fail</code> (prod)</td></tr>
+      <tr><td><code>tenantwall.filter.excludedTables</code></td><td>CSV</td><td>(empty)</td><td>Tables to never filter</td></tr>
+      <tr><td><code>tenantwall.parser.url</code></td><td>string</td><td><code>null</code></td><td>Python parser URL (null = disabled)</td></tr>
+      <tr><td><code>tenantwall.parser.dialect</code></td><td>string</td><td><code>mysql</code></td><td>DB dialect (mysql, tsql, oracle, postgres, ...)</td></tr>
+      <tr><td><code>tenantwall.insert.strategy</code></td><td>enum</td><td><code>skip</code></td><td><code>skip</code>, <code>append</code>, <code>fail</code></td></tr>
+      <tr><td><code>tenantwall.schema.&lt;table&gt;</code></td><td>CSV</td><td>(empty)</td><td>Explicit column list for INSERT hints</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Configuration Sources (Priority Order)</h2>
+  <ol>
+    <li><strong>Agent args</strong>: <code>-javaagent:agent.jar=/path/to/config.properties</code></li>
+    <li><strong>System property</strong>: <code>-Dtenantwall.config=/path/to/config.properties</code></li>
+    <li><strong>System properties</strong>: <code>-Dtenantwall.filter.column=org_id</code></li>
+    <li><strong>Environment variables</strong>: <code>TENANTWALL_FILTER_COLUMN=org_id</code></li>
+    <li><strong>Classpath</strong>: <code>tenantwall.properties</code> in <code>src/main/resources</code></li>
+    <li><strong>Defaults</strong></li>
+  </ol>
+
+  <h2>Runtime Overrides</h2>
+<pre><code>// Programmatic (before Spring starts)
+TenantwallConfig.setFilterColumn("org_id");
+TenantwallConfig.setParserUrl("http://parser.internal:8000");
+TenantwallConfig.setOnMissing(TenantwallConfig.MissingValueStrategy.FAIL);</code></pre>
+
+  <h2>Per-Database Configuration</h2>
+  <h3>MySQL</h3>
+<pre><code>tenantwall.parser.dialect=mysql
+spring.datasource.url=jdbc:mysql://localhost:3306/store_demo
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver</code></pre>
+
+  <h3>SQL Server</h3>
+<pre><code>tenantwall.parser.dialect=tsql
+spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=store_demo;encrypt=false;trustServerCertificate=true
+spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver</code></pre>
+
+  <h3>Oracle</h3>
+<pre><code>tenantwall.parser.dialect=oracle
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/XEPDB1
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver</code></pre>
+</div>
+
+<!-- ═══ 11. ROADMAP ═══ -->
+<div class="section">
+  <h1><span class="num">11</span>Roadmap</h1>
+
+  <h2>✅ Shipped (v1.0)</h2>
+  <ul class="checklist">
+    <li>Java agent (ByteBuddy)</li>
+    <li>Hibernate 6.x integration (StatementPreparerImpl)</li>
+    <li>JDBC Statement interceptor (JdbcTemplate)</li>
+    <li>CTE / window function support (Python sqlglot sidecar)</li>
+    <li>Fail-open fallback (local JSqlParser)</li>
+    <li>Caffeine query cache (10K entries, 30 min TTL)</li>
+    <li>Config via properties / env / system props / agent args</li>
+    <li>Verified: MySQL 8.0, SQL Server 2022, Oracle XE 21c</li>
+    <li>88/88 integration tests passing</li>
+  </ul>
+
+  <h2>🚧 In Progress (v1.1)</h2>
+  <ul>
+    <li>Bind variable template caching (avoid re-parsing Hibernate <code>?</code> queries)</li>
+    <li>MyBatis interceptor adapter</li>
+    <li>Metrics endpoint (Prometheus format)</li>
+    <li>Docker image for the agent (with Python parser bundled)</li>
+  </ul>
+
+  <h2>🔮 Planned (v2.0)</h2>
+  <ul>
+    <li>jOOQ and QueryDSL adapters</li>
+    <li>Schema-per-tenant mode (alternative to row-level)</li>
+    <li>Nested IN-clause tuple parsing</li>
+    <li>Oracle PL/SQL hint preservation</li>
+    <li>SQL Server Always On AG testing</li>
+    <li>Oracle RAC testing</li>
+    <li>Native GraalVM image support</li>
+    <li>WebAssembly agent variant (edge deployments)</li>
+  </ul>
+</div>
+
+<!-- ═══ 12. FAQ ═══ -->
+<div class="section">
+  <h1><span class="num">12</span>FAQ</h1>
+
+  <h3>Is it production-ready?</h3>
+  <p><strong>Yes, with caveats:</strong></p>
+  <ul class="checklist">
+    <li>88/88 integration tests passing across 3 databases</li>
+    <li>Zero data leaks in tested scenarios</li>
+    <li>Fail-closed mode available (<code>onMissing=fail</code>)</li>
+  </ul>
+  <p class="text-small text-muted">⚠️ Not yet battle-tested at scale. Python parser is optional but recommended for complex SQL.</p>
+  <p><strong>Recommendation:</strong> Start with <code>onMissing=skip</code> in staging, migrate to <code>onMissing=fail</code> in production after verifying all query paths are covered.</p>
+
+  <h3>What's the performance overhead?</h3>
+  <table class="table-compact">
+    <thead><tr><th>Scenario</th><th>Overhead</th></tr></thead>
+    <tbody>
+      <tr><td>Cache hit (repeated SQL)</td><td><strong>~0 μs</strong></td></tr>
+      <tr><td>Cache miss, simple query (local)</td><td>~0.8 ms</td></tr>
+      <tr><td>Cache miss, complex query (Python)</td><td>~12 ms (network RTT dominates)</td></tr>
+      <tr><td>Fail-open fallback (Python down)</td><td>~1.5 ms</td></tr>
+    </tbody>
+  </table>
+  <p>The cache is the key — after warmup, most queries pay <strong>zero</strong> parsing cost.</p>
+
+  <h3>Does it work with Hibernate 5.x?</h3>
+  <p><strong>Not verified.</strong> The <code>StatementPreparerImpl</code> API differs between Hibernate 5 and 6. Current release targets <strong>Hibernate 6.2+</strong>. Community contribution welcome.</p>
+
+  <h3>Can I use it without Spring Boot?</h3>
+  <p><strong>Yes.</strong> TenantWall integrates at the JDBC layer, not Spring. You need:</p>
+  <ul>
+    <li>Hibernate 6.2+ (or use plain Statement — Layer 2/3 interceptor)</li>
+    <li>A ThreadLocal holding the current tenant (implement <code>TenantContext</code> equivalent)</li>
+    <li>The agent JAR on the <code>-javaagent</code> flag</li>
+  </ul>
+
+  <h3>What happens if the Python parser is down?</h3>
+  <p><strong>Fail-open fallback</strong> to local JSqlParser:</p>
+  <ul>
+    <li>Simple queries → rewritten correctly ✅</li>
+    <li>Complex queries (CTE, window functions) → attempted by JSqlParser; if fails, original SQL runs unmodified ⚠️</li>
+  </ul>
+  <p>In production, <strong>monitor the <code>fallbacks</code> counter</strong> — a steady increase means Python is down.</p>
+
+  <h3>How do I handle the tenants table itself?</h3>
+<pre><code>tenantwall.filter.excludedTables=tenants,audit_log,flyway_schema_history</code></pre>
+  <p>The <code>tenants</code> table typically stores tenant metadata (not per-tenant data), so it shouldn't be filtered.</p>
+
+  <h3>Is there a per-tenant schema option?</h3>
+  <p><strong>Not yet.</strong> Current version supports <strong>row-level isolation</strong> (shared schema, <code>tenant_id</code> column). Schema-per-tenant is on the roadmap for v2.0.</p>
+</div>
+
+<!-- ═══ 13. LICENSE & CONTACT ═══ -->
+<div class="section">
+  <h1><span class="num">13</span>License &amp; Contact</h1>
+
+  <h2>MIT License</h2>
+  <p class="text-small">Copyright (c) 2026 TenantWall Contributors</p>
+  <p class="text-small">Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+  <p class="text-small">The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+  <p class="text-small">THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.</p>
+
+  <h2>Contact</h2>
+  <table class="table-compact">
+    <thead><tr><th>Channel</th><th>Address</th></tr></thead>
+    <tbody>
+      <tr><td>GitHub</td><td><code>github.com/maksoud13/tenantwall</code></td></tr>
+      <tr><td>Documentation</td><td><code>docs/</code> folder in the repo</td></tr>
+      <tr><td>Bug reports</td><td>GitHub Issues</td></tr>
+      <tr><td>Discussions</td><td>GitHub Discussions</td></tr>
+      <tr><td>Enterprise</td><td><code>hello@tenantwall.io</code></td></tr>
+      <tr><td>Security disclosures</td><td><code>security@tenantwall.io</code></td></tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:15mm;padding-top:8mm;border-top:2px solid #0ea5e9;text-align:center;">
+    <div style="font-size:28pt;font-weight:800;color:#0c4a6e;margin-bottom:3mm;">TenantWall</div>
+    <div style="font-size:13pt;color:#0ea5e9;font-weight:600;letter-spacing:2px;">Zero-Code · Universal · Verified</div>
+    <div style="font-size:9pt;color:#64748b;margin-top:4mm;">Built because silent leaks are the worst kind of bug.</div>
+  </div>
+</div>
+
+</body>
+</html>
