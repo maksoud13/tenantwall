@@ -123,10 +123,22 @@ public class SmartSqlModifier {
         return fallbackCount;
     }
 
-    public static void resetStats() {
-        CACHE.invalidateAll();
+    /**
+     * Reset counters WITHOUT clearing cache.
+     * Use this after warmup, so cache stays warm.
+     */
+    public static void resetCounters() {
         pythonCallCount = 0;
         localCallCount = 0;
         fallbackCount = 0;
     }
+
+    /**
+     * Full reset — clears cache AND counters.
+     */
+    public static void resetStats() {
+        CACHE.invalidateAll();
+        resetCounters();
+    }
+
 }

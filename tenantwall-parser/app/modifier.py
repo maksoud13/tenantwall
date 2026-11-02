@@ -63,7 +63,10 @@ class SqlModifier:
     # SELECT handler
     # ═══════════════════════════════════════════════════════════════
     def _modify_select(self, node: exp.Select, column: str, value: str):
-        # Process attached CTEs
+        # 1) اجمع أسماء CTEs المرفقة (مش tables حقيقية)
+        cte_names = self._collect_cte_names(node)
+
+        # 2) عالج أجسام CTEs كل واحدة لوحدها
         with_clause = node.args.get("with")
         if with_clause:
             for cte in with_clause.expressions:
@@ -72,18 +75,16 @@ class SqlModifier:
 
         if self._is_trivial_select(node):
             return
-
         if self._touches_excluded_table(node):
             return
-
         if self._has_filter(node, column):
             return
 
-        # Add filter to WHERE
-        condition = self._build_condition(column, value)
-        self._add_or_wrap_where(node, condition)
+        # 3) ⬇️ السطرين الجداد — alias أَوّلاً، بعدين condition مؤهَّلة
+        alias = self._resolve_tenant_alias(node, cte_names)
+        condition = self._build_condition(column, value, alias)
 
-        # Process subqueries
+        self._add_or_wrap_where(node, condition)
         self._process_subqueries(node, column, value)
 
     def _modify_union(self, node: exp.Union, column: str, value: str):
@@ -119,7 +120,10 @@ class SqlModifier:
         if self._has_filter(node, column):
             return
 
-        condition = self._build_condition(column, value)
+        cte_names = self._collect_cte_names(node)
+        alias = self._resolve_tenant_alias(node, cte_names)
+        condition = self._build_condition(column, value, alias)
+
         self._add_or_wrap_where(node, condition)
 
         where = node.args.get("where")
@@ -135,7 +139,10 @@ class SqlModifier:
         if self._has_filter(node, column):
             return
 
-        condition = self._build_condition(column, value)
+        cte_names = self._collect_cte_names(node)
+        alias = self._resolve_tenant_alias(node, cte_names)
+        condition = self._build_condition(column, value, alias)
+
         self._add_or_wrap_where(node, condition)
 
         where = node.args.get("where")
@@ -183,11 +190,64 @@ class SqlModifier:
     # ═══════════════════════════════════════════════════════════════
     # Helpers
     # ═══════════════════════════════════════════════════════════════
-    def _build_condition(self, column: str, value: str) -> exp.Expression:
-        return exp.EQ(
-            this=exp.column(column),
-            expression=exp.Literal.string(value),
-        )
+    def _collect_cte_names(self, node: exp.Expression) -> set:
+        """أسماء CTEs المتاحة في هذا الـ scope (بعد normalization، lowercase)."""
+        names = set()
+        with_clause = node.args.get("with")
+        if with_clause:
+            for cte in with_clause.expressions:
+                if isinstance(cte, exp.CTE):
+                    names.add(cte.alias_or_name.lower())
+        return names
+
+
+    def _resolve_tenant_alias(self, node: exp.Expression,
+                          cte_names: Optional[set] = None) -> Optional[str]:
+        """
+        اختار أول جدول حقيقي (غير excluded، وغير CTE) في الـ scope،
+        ورجّع الـ alias بتاعه عشان نستخدمه كـ qualifier لعمود tenant.
+        """
+        cte_names = cte_names or set()
+
+        # ── SELECT: من FROM + JOINs ──
+        if isinstance(node, exp.Select):
+            from_clause = node.args.get("from")
+            if from_clause is not None:
+                main = from_clause.this
+                if (isinstance(main, exp.Table)
+                        and main.name.lower() not in self.excluded_tables
+                        and main.name.lower() not in cte_names):
+                    return main.alias_or_name
+                for join in (node.args.get("joins") or []):
+                    t = join.this
+                    if (isinstance(t, exp.Table)
+                            and t.name.lower() not in self.excluded_tables
+                            and t.name.lower() not in cte_names):
+                        return t.alias_or_name
+            return None
+
+        # ── UPDATE / DELETE: target هو node.this ──
+        if isinstance(node, (exp.Update, exp.Delete)):
+            target = node.args.get("this")
+            if (isinstance(target, exp.Table)
+                    and target.name.lower() not in self.excluded_tables
+                    and target.name.lower() not in cte_names):
+                return target.alias_or_name
+            # DELETE MySQL يدعم قائمة جداول
+            if isinstance(target, list):
+                for t in target:
+                    if (isinstance(t, exp.Table)
+                            and t.name.lower() not in self.excluded_tables
+                            and t.name.lower() not in cte_names):
+                        return t.alias_or_name
+
+        return None
+    def _build_condition(self, column: str, value: str, alias: Optional[str] = None) -> exp.Expression:
+        if alias:
+            left = exp.column(column, table=alias)
+        else:
+            left = exp.column(column)
+        return exp.EQ(this=left, expression=exp.Literal.string(value))
 
     def _add_or_wrap_where(self, node: exp.Expression, condition: exp.Expression):
         """Add condition to WHERE (or create WHERE). Wrap existing WHERE in parens."""
