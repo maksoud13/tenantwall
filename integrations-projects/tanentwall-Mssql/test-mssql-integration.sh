@@ -23,10 +23,10 @@ title(){ echo; printf "${BOLD}${CYAN}═══ %s ═══${NC}\n" "$*"; echo; 
 assert_eq() {
     local actual="$1" expected="$2" name="$3"
     if [ "$actual" = "$expected" ]; then
-        printf "${GREEN}✅ PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${GREEN}[OK] PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${RED}[ERROR] FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         FAIL=$((FAIL + 1))
     fi
 }
@@ -34,22 +34,22 @@ assert_eq() {
 assert_in() {
     local h="$1" n="$2" name="$3"
     if [[ "$h" == *"$n"* ]]; then
-        printf "${GREEN}✅ PASS${NC}  %s\n" "$name"; PASS=$((PASS + 1))
+        printf "${GREEN}[OK] PASS${NC}  %s\n" "$name"; PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (missing: %s)\n" "$name" "$n"; FAIL=$((FAIL + 1))
+        printf "${RED}[ERROR] FAIL${NC}  %s (missing: %s)\n" "$name" "$n"; FAIL=$((FAIL + 1))
     fi
 }
 
 assert_not_in() {
     local h="$1" n="$2" name="$3"
     if [[ "$h" != *"$n"* ]]; then
-        printf "${GREEN}✅ PASS${NC}  %s\n" "$name"; PASS=$((PASS + 1))
+        printf "${GREEN}[OK] PASS${NC}  %s\n" "$name"; PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (unexpectedly contains: %s)\n" "$name" "$n"; FAIL=$((FAIL + 1))
+        printf "${RED}[ERROR] FAIL${NC}  %s (unexpectedly contains: %s)\n" "$name" "$n"; FAIL=$((FAIL + 1))
     fi
 }
 
-warn() { printf "${YELLOW}⚠️  WARN${NC}  %s\n" "$*"; WARN=$((WARN + 1)); }
+warn() { printf "${YELLOW}[WARN]️  WARN${NC}  %s\n" "$*"; WARN=$((WARN + 1)); }
 
 # ═══ Curl wrapper — uses curl.exe on Windows (more reliable) ═══
 CURL_BIN="curl"
@@ -105,7 +105,7 @@ wait_for_app() {
 
         if [ "$status" = "200" ]; then
             echo ""
-            printf "  ${GREEN}✅${NC}  App responded 200 (attempt ${i}/${max_attempts})\n"
+            printf "  ${GREEN}[OK]${NC}  App responded 200 (attempt ${i}/${max_attempts})\n"
             return 0
         fi
         echo -n "."
@@ -113,7 +113,7 @@ wait_for_app() {
     done
 
     echo ""
-    printf "  ${RED}❌${NC}  App did not respond 200 after ${max_attempts}s\n"
+    printf "  ${RED}[ERROR]${NC}  App did not respond 200 after ${max_attempts}s\n"
     printf "  Last HTTP status: '%s'\n" "$status"
     printf "  Diagnostic:\n"
     printf "    %s -v -H 'X-Tenant-Id: SHOP_ALPHA' %s\n" "$CURL_BIN" "$url"
@@ -133,7 +133,7 @@ wait_for_mssql() {
             health=$(docker inspect -f '{{.State.Health.Status}}' "$MSSQL_CONTAINER" 2>/dev/null)
             if [ "$health" = "healthy" ]; then
                 echo ""
-                printf "  ${GREEN}✅${NC}  Container healthy (attempt ${i}/${max_attempts})\n"
+                printf "  ${GREEN}[OK]${NC}  Container healthy (attempt ${i}/${max_attempts})\n"
                 return 0
             fi
         fi
@@ -142,7 +142,7 @@ wait_for_mssql() {
     done
 
     echo ""
-    printf "  ${RED}❌${NC}  Container not healthy after 120s\n"
+    printf "  ${RED}[ERROR]${NC}  Container not healthy after 120s\n"
     printf "  Diagnostic:\n"
     printf "    docker ps -a --filter 'name=%s'\n" "$MSSQL_CONTAINER"
     printf "    docker logs %s --tail 30\n" "$MSSQL_CONTAINER"
@@ -177,9 +177,9 @@ echo "  SHOP_ALPHA: $alpha_total"
 echo "  SHOP_BETA:  $beta_total"
 
 if [ "$alpha_total" -gt 0 ] && [ "$beta_total" -gt 0 ]; then
-    printf "${GREEN}✅${NC}  DB has both tenants\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK]${NC}  DB has both tenants\n"; PASS=$((PASS + 1))
 else
-    printf "${RED}❌${NC}  DB missing tenant data\n"; FAIL=$((FAIL + 1))
+    printf "${RED}[ERROR]${NC}  DB missing tenant data\n"; FAIL=$((FAIL + 1))
 fi
 
 # ═══ STEP 2: READ ═══
@@ -270,7 +270,7 @@ py_calls=$(echo "$stats" | python -c "import json,sys;print(json.load(sys.stdin)
 fb_calls=$(echo "$stats" | python -c "import json,sys;print(json.load(sys.stdin).get('fallbacks',0))"   2>/dev/null)
 
 if [ "${py_calls:-0}" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Python parser used ($py_calls calls)\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK] PASS${NC}  Python parser used ($py_calls calls)\n"; PASS=$((PASS + 1))
 else
     warn "Python parser NOT used"
 fi
@@ -282,7 +282,7 @@ cache=$(http_get "$BASE_URL/api/admin/cache-stats" "SHOP_ALPHA")
 echo "  $cache"
 hits=$(echo "$cache" | python -c "import json,sys;print(json.load(sys.stdin).get('hits',0))" 2>/dev/null)
 if [ "${hits:-0}" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Cache has hits ($hits)\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK] PASS${NC}  Cache has hits ($hits)\n"; PASS=$((PASS + 1))
 else
     warn "Cache has 0 hits"
 fi
@@ -296,9 +296,9 @@ printf "  ${YELLOW}WARN: %d${NC}\n" "$WARN"
 echo
 
 if [ "$FAIL" -gt 0 ]; then
-    printf "${RED}${BOLD}❌ Some tests FAILED${NC}\n"; exit 1
+    printf "${RED}${BOLD}[ERROR] Some tests FAILED${NC}\n"; exit 1
 elif [ "$WARN" -gt 0 ]; then
-    printf "${YELLOW}${BOLD}⚠️  All passed, with warnings${NC}\n"; exit 0
+    printf "${YELLOW}${BOLD}[WARN]️  All passed, with warnings${NC}\n"; exit 0
 else
-    printf "${GREEN}${BOLD}🎉 All tests passed!${NC}\n"; exit 0
+    printf "${GREEN}${BOLD}[DONE] All tests passed!${NC}\n"; exit 0
 fi

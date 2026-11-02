@@ -16,10 +16,10 @@ public class DeleteHandler {
         Expression currentWhere = delete.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("✅ [DeleteHandler] Filter already exists, skipping");
+            System.out.println("[OK] [DeleteHandler] Filter already exists, skipping");
         } else {
             if (currentWhere == null) {
-                System.out.println("🛡️ [DeleteHandler] DELETE without WHERE detected");
+                System.out.println("[AGENT] [DeleteHandler] DELETE without WHERE detected");
             }
 
             Expression newWhere = SqlModifierUtils.addFilterToWhere(

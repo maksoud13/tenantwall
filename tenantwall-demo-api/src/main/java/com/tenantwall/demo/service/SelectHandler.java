@@ -33,7 +33,7 @@ public class SelectHandler {
                 process(inner, column, value);
             }
         } else {
-            System.out.println("⚠️ [SelectHandler] Unsupported Select type: "
+            System.out.println("[WARN] [SelectHandler] Unsupported Select type: "
                     + select.getClass().getSimpleName());
         }
     }
@@ -43,7 +43,7 @@ public class SelectHandler {
             String value) {
         // 1. Add filter to WHERE (if not already present)
         if (SqlModifierUtils.alreadyHasFilter(plainSelect.getWhere(), column)) {
-            System.out.println("✅ [SelectHandler] Filter already exists, skipping WHERE");
+            System.out.println("[OK] [SelectHandler] Filter already exists, skipping WHERE");
         } else {
             Expression newWhere = SqlModifierUtils.addFilterToWhere(
                     plainSelect.getWhere(), column, value);

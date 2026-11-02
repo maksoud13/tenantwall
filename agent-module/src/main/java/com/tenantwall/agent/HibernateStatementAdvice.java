@@ -14,7 +14,7 @@ public class HibernateStatementAdvice {
         }
 
         if (sql.contains("products") || sql.contains("categories")) {
-            System.err.println("🔍 [HibernateAdvice] fired at " + origin);
+            System.err.println("[DEBUG] [HibernateAdvice] fired at " + origin);
         }
 
         String tenantId = TenantContext.getTenant();
@@ -27,7 +27,7 @@ public class HibernateStatementAdvice {
 
         if (!modified.equals(sql)) {
             sql = modified; // ← reassignment directly propagates
-            System.err.println("🎯 [Hibernate] Modified: " + sql);
+            System.err.println("[SQL] [Hibernate] Modified: " + sql);
         }
     }
 }

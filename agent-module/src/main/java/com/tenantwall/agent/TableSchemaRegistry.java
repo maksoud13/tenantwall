@@ -28,14 +28,14 @@ public final class TableSchemaRegistry {
     private static TableSchemaProvider resolve() {
         // 1) ServiceLoader — user-supplied SPI
         for (TableSchemaProvider p : ServiceLoader.load(TableSchemaProvider.class)) {
-            System.out.println("📋 [TenantWall] Using custom TableSchemaProvider: "
+            System.out.println("[COLS] [TenantWall] Using custom TableSchemaProvider: "
                     + p.getClass().getName());
             return p;
         }
         // 2) Properties-based
         PropertiesTableSchemaProvider props = new PropertiesTableSchemaProvider();
         if (!props.isEmpty()) {
-            System.out.println("📋 [TenantWall] Loaded schemas for: " + props.getKnownTables());
+            System.out.println("[COLS] [TenantWall] Loaded schemas for: " + props.getKnownTables());
             return props;
         }
         // 3) NoOp — safe default

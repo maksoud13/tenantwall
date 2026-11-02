@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class TestApplication {
     public static void main(String[] args) {
         SpringApplication.run(TestApplication.class, args);
-        System.out.println("🚀 Test Application is Running on http://localhost:8080");
-        System.out.println("📊 جرب: http://localhost:8080/users");
+        System.out.println("[START] Test Application is Running on http://localhost:8080");
+        System.out.println("[DATA] جرب: http://localhost:8080/users");
     }
 }

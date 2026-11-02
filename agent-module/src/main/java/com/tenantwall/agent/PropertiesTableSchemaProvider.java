@@ -65,7 +65,7 @@ public class PropertiesTableSchemaProvider implements TableSchemaProvider {
         try (InputStream in = Files.newInputStream(Path.of(path))) {
             loadProps(in);
         } catch (Exception e) {
-            System.err.println("⚠️ [TenantWall] Cannot load schema file " + path + ": " + e.getMessage());
+            System.err.println("[WARN]️ [TenantWall] Cannot load schema file " + path + ": " + e.getMessage());
         }
     }
 

@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # ============================================================
 # test-load.sh — TenantWall megaexample load test runner
@@ -74,6 +75,56 @@ stop_app() {
     kill -9 "$pid" 2>/dev/null || true
 }
 
+# ─── Smoke-check all endpoints (called after app is up) ───
+smoke_endpoints() {
+    local tenant="TENANT_001"
+    local endpoints=(
+        "/api/products/1|200|oltp_lookup"
+        "/api/products?page=0&size=20|200|oltp_list"
+        "/api/products/by-sku/P-TENANT_001-000000|200|oltp_sku"
+        "/api/products/reports/stock-value|200|olap_cte"
+        "/api/products/reports/top-categories|200|olap_window"
+        "/api/reports/category-revenue|200|olap_cat_revenue (NEW)"
+        "/api/reports/customer-ltv|200|olap_cust_ltv (NEW)"
+        "/api/reports/low-stock|200|olap_low_stock (NEW)"
+    )
+    local pass=0 fail=0
+    for entry in "${endpoints[@]}"; do
+        IFS='|' read -r path expected name <<< "$entry"
+        local actual
+        actual=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 \
+                 -H "X-Tenant-Id: $tenant" "${BASE_URL}${path}")
+        if [ "$actual" = "$expected" ]; then
+            echo "    [OK] $name → $actual"
+            pass=$((pass+1))
+        else
+            echo "    [X] $name → $actual (expected $expected)"
+            fail=$((fail+1))
+        fi
+    done
+    echo "  Endpoints: $pass passed, $fail failed"
+    [ "$fail" -eq 0 ] && return 0 || return 1
+}
+
+# ─── Verify cross-tenant isolation ───
+verify_isolation() {
+    local t1="TENANT_001"
+    local t2_id=40001  # belongs to TENANT_002
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+             -H "X-Tenant-Id: $t1" "${BASE_URL}/api/products/${t2_id}")
+    if [ "$status" = "403" ] || [ "$status" = "404" ]; then
+        echo "    [OK] Cross-tenant: $status (isolated)"
+        return 0
+    elif [ "$status" = "200" ]; then
+        echo "    [X] ISOLATION BROKEN: HTTP 200 — DATA LEAK"
+        return 1
+    else
+        echo "    ? Unexpected status: $status"
+        return 1
+    fi
+}
+
 run_test() {
     local mode="$1"
     local outdir="results/$mode"
@@ -100,11 +151,30 @@ run_test() {
     fi
     ok "App is up"
 
-    # Reset BEFORE warmup (fresh state)
+    # Reset BEFORE warmup
     if [ "$mode" = "intercepted" ]; then
         curl -s -X POST "$BASE_URL/api/admin/reset-stats" > /dev/null
     fi
 
+    # ─── Smoke-check all endpoints ───
+    step "Smoke-check endpoints"
+    if ! smoke_endpoints; then
+        err "One or more endpoints failed"
+        stop_app "$pid"
+        return 1
+    fi
+    ok "All endpoints reachable"
+
+    # ─── Isolation check ───
+    step "Cross-tenant isolation"
+    if ! verify_isolation; then
+        err "ISOLATION BROKEN — aborting"
+        stop_app "$pid"
+        return 1
+    fi
+    ok "Isolation verified"
+
+    # ─── Warmup ───
     step "Warmup ($WARMUP_DURATION)"
     k6 run --quiet --no-summary \
         -e BASE_URL="$BASE_URL" \
@@ -114,14 +184,14 @@ run_test() {
         "$JS_SCRIPT" 2>&1 | tail -3 || true
     ok "Warmup done"
 
-    # Reset counters AFTER warmup (keep cache warm if endpoint exists)
+    # Reset counters after warmup (keep cache if endpoint exists)
     if [ "$mode" = "intercepted" ]; then
-        # Try reset-counters first; fallback to reset-stats
         curl -s -X POST "$BASE_URL/api/admin/reset-counters" > /dev/null 2>&1 \
             || curl -s -X POST "$BASE_URL/api/admin/reset-stats" > /dev/null
         echo "  Counters reset (post-warmup)"
     fi
 
+    # ─── Load test ───
     step "Load test ($STAGE_DURATION @ $VUS VUs)"
     k6 run \
         -e BASE_URL="$BASE_URL" \
@@ -177,21 +247,35 @@ echo "==========================================================="
 echo ""
 
 if [ -f results/baseline/k6-output.txt ]; then
-    echo "  Baseline (no agent):"
+    echo -e "  ${BOLD}Baseline (no agent):${NC}"
     grep -E "own_tenant_ok|cross_tenant_blocked|isolation_broken|http_reqs\." \
         results/baseline/k6-output.txt | sed 's/^/    /'
     echo ""
 fi
 
 if [ -f results/intercepted/k6-output.txt ]; then
-    echo "  Intercepted (with agent):"
-    grep -E "own_tenant_ok|cross_tenant_blocked|isolation_broken|not_found_404|http_reqs\." \
+    echo -e "  ${BOLD}Intercepted (with agent):${NC}"
+    grep -E "own_tenant_ok|cross_tenant_blocked|isolation_broken|not_found_404|server_errors_5xx|http_reqs\." \
         results/intercepted/k6-output.txt | sed 's/^/    /'
+    echo ""
+
+    echo -e "  ${BOLD}Per-endpoint latency (intercepted):${NC}"
+    for ep in oltp_lookup oltp_list oltp_sku oltp_cte oltp_sku olap_cte olap_window olap_cat_revenue olap_cust_ltv olap_low_stock; do
+        line=$(grep "latency_${ep}_ms" results/intercepted/k6-output.txt | head -1)
+        [ -n "$line" ] && echo "    $line"
+    done
+    echo ""
+
+    echo -e "  ${BOLD}3 NEW REPORT ENDPOINTS:${NC}"
+    for ep in olap_cat_revenue olap_cust_ltv olap_low_stock; do
+        line=$(grep "http_req_duration{type:${ep}}" results/intercepted/k6-output.txt | head -2 | tail -1)
+        [ -n "$line" ] && echo "    $line"
+    done
     echo ""
 fi
 
 if [ -f results/intercepted/tenantwall-stats.json ]; then
-    echo "  TenantWall agent:"
+    echo -e "  ${BOLD}TenantWall agent:${NC}"
     python3 -c "
 import json
 try:

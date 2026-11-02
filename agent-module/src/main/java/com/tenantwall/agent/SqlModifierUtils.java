@@ -175,7 +175,7 @@ public class SqlModifierUtils {
             ParenthesedSelect ps = (ParenthesedSelect) expr;
             Select subSelect = ps.getSelect();
             if (subSelect != null) {
-                System.out.println("🟢 [Utils] Found Subquery (ParenthesedSelect)");
+                System.out.println("[INFO] [Utils] Found Subquery (ParenthesedSelect)");
                 SelectHandler.handle(subSelect, column, value);
             }
             return;
@@ -186,7 +186,7 @@ public class SqlModifierUtils {
             LateralSubSelect lss = (LateralSubSelect) expr;
             Select subSelect = lss.getSelect();
             if (subSelect != null) {
-                System.out.println("🟢 [Utils] Found Lateral Subquery");
+                System.out.println("[INFO] [Utils] Found Lateral Subquery");
                 SelectHandler.handle(subSelect, column, value);
             }
             return;

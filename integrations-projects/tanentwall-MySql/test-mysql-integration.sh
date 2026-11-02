@@ -34,10 +34,10 @@ title(){ echo; printf "${BOLD}${CYAN}═══ %s ═══${NC}\n" "$*"; echo; 
 assert_eq() {
     local actual="$1" expected="$2" name="$3"
     if [ "$actual" = "$expected" ]; then
-        printf "${GREEN}✅ PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${GREEN}[OK] PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${RED}[ERROR] FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         FAIL=$((FAIL + 1))
     fi
 }
@@ -45,10 +45,10 @@ assert_eq() {
 assert_in() {
     local haystack="$1" needle="$2" name="$3"
     if [[ "$haystack" == *"$needle"* ]]; then
-        printf "${GREEN}✅ PASS${NC}  %s (contains: %s)\n" "$name" "$needle"
+        printf "${GREEN}[OK] PASS${NC}  %s (contains: %s)\n" "$name" "$needle"
         PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (missing: %s)\n" "$name" "$needle"
+        printf "${RED}[ERROR] FAIL${NC}  %s (missing: %s)\n" "$name" "$needle"
         FAIL=$((FAIL + 1))
     fi
 }
@@ -56,16 +56,16 @@ assert_in() {
 assert_not_in() {
     local haystack="$1" needle="$2" name="$3"
     if [[ "$haystack" == *"$needle"* ]]; then
-        printf "${RED}❌ FAIL${NC}  %s (unexpectedly contains: %s)\n" "$name" "$needle"
+        printf "${RED}[ERROR] FAIL${NC}  %s (unexpectedly contains: %s)\n" "$name" "$needle"
         FAIL=$((FAIL + 1))
     else
-        printf "${GREEN}✅ PASS${NC}  %s (no leak: %s)\n" "$name" "$needle"
+        printf "${GREEN}[OK] PASS${NC}  %s (no leak: %s)\n" "$name" "$needle"
         PASS=$((PASS + 1))
     fi
 }
 
 warn() {
-    printf "${YELLOW}⚠️  WARN${NC}  %s\n" "$*"
+    printf "${YELLOW}[WARN]  WARN${NC}  %s\n" "$*"
     WARN=$((WARN + 1))
 }
 
@@ -105,17 +105,17 @@ printf "${BOLD}${BLUE}╚══════════════════�
 # ═══ Pre-flight checks ═══
 title "PRE-FLIGHT: Connectivity"
 if curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/products" -H "X-Tenant-Id: PING" | grep -q "200"; then
-    printf "${GREEN}✅${NC}  App is up at %s\n" "$BASE_URL"
+    printf "${GREEN}[OK]${NC}  App is up at %s\n" "$BASE_URL"
 else
-    printf "${RED}❌${NC}  App NOT reachable at %s\n" "$BASE_URL"
+    printf "${RED}[ERROR]${NC}  App NOT reachable at %s\n" "$BASE_URL"
     printf "${YELLOW}   Start: java -javaagent:... -jar target/tenantwall-store-mysqlexample-1.0.0.jar${NC}\n"
     exit 1
 fi
 
 if docker ps --format '{{.Names}}' | grep -q "^${MYSQL_CONTAINER}$"; then
-    printf "${GREEN}✅${NC}  MySQL container '%s' is running\n" "$MYSQL_CONTAINER"
+    printf "${GREEN}[OK]${NC}  MySQL container '%s' is running\n" "$MYSQL_CONTAINER"
 else
-    printf "${RED}❌${NC}  MySQL container '%s' not running\n" "$MYSQL_CONTAINER"
+    printf "${RED}[ERROR]${NC}  MySQL container '%s' not running\n" "$MYSQL_CONTAINER"
     exit 1
 fi
 
@@ -135,10 +135,10 @@ echo "  SHOP_ALPHA: $alpha_total"
 echo "  SHOP_BETA:  $beta_total"
 
 if [ "$alpha_total" -gt 0 ] && [ "$beta_total" -gt 0 ]; then
-    printf "${GREEN}✅${NC}  DB has both tenants\n"
+    printf "${GREEN}[OK]${NC}  DB has both tenants\n"
     PASS=$((PASS + 1))
 else
-    printf "${RED}❌${NC}  DB missing tenant data\n"
+    printf "${RED}[ERROR]${NC}  DB missing tenant data\n"
     FAIL=$((FAIL + 1))
 fi
 
@@ -200,10 +200,10 @@ create_a=$(curl -s -X POST \
 create_a_id=$(echo "$create_a" | python -c "import json,sys;print(json.load(sys.stdin).get('id','?'))" 2>/dev/null)
 
 if [ "$create_a_id" != "?" ] && [ -n "$create_a_id" ]; then
-    printf "${GREEN}✅ PASS${NC}  CREATE product for SHOP_ALPHA (id=$create_a_id)\n"
+    printf "${GREEN}[OK] PASS${NC}  CREATE product for SHOP_ALPHA (id=$create_a_id)\n"
     PASS=$((PASS + 1))
 else
-    printf "${RED}❌ FAIL${NC}  CREATE product for SHOP_ALPHA\n"
+    printf "${RED}[ERROR] FAIL${NC}  CREATE product for SHOP_ALPHA\n"
     echo "  Response: $create_a"
     FAIL=$((FAIL + 1))
 fi
@@ -302,7 +302,7 @@ local_calls=$(echo "$stats"  | python -c "import json,sys;print(json.load(sys.st
 fallbacks=$(echo "$stats"    | python -c "import json,sys;print(json.load(sys.stdin).get('fallbacks',0))"   2>/dev/null)
 
 if [ "$python_calls" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Python parser was used ($python_calls calls)\n"
+    printf "${GREEN}[OK] PASS${NC}  Python parser was used ($python_calls calls)\n"
     PASS=$((PASS + 1))
 else
     warn "Python parser NOT used (0 calls) — CTE report may have fallen back to local"
@@ -319,7 +319,7 @@ echo "  $cache"
 
 hits=$(echo "$cache" | python -c "import json,sys;print(json.load(sys.stdin).get('hits',0))" 2>/dev/null)
 if [ "$hits" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Cache has hits ($hits)\n"
+    printf "${GREEN}[OK] PASS${NC}  Cache has hits ($hits)\n"
     PASS=$((PASS + 1))
 else
     warn "Cache has 0 hits — expected after multiple identical queries"
@@ -336,12 +336,12 @@ printf "  ${YELLOW}WARN: %d${NC}\n" "$WARN"
 echo
 
 if [ "$FAIL" -gt 0 ]; then
-    printf "${RED}${BOLD}❌ Some tests FAILED — review above${NC}\n"
+    printf "${RED}${BOLD}[ERROR] Some tests FAILED — review above${NC}\n"
     exit 1
 elif [ "$WARN" -gt 0 ]; then
-    printf "${YELLOW}${BOLD}⚠️  All tests passed, with warnings${NC}\n"
+    printf "${YELLOW}${BOLD}[WARN]  All tests passed, with warnings${NC}\n"
     exit 0
 else
-    printf "${GREEN}${BOLD}🎉 All tests passed!${NC}\n"
+    printf "${GREEN}${BOLD}[DONE] All tests passed!${NC}\n"
     exit 0
 fi

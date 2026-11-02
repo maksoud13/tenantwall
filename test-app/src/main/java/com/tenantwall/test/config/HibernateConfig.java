@@ -34,13 +34,13 @@ public class HibernateConfig {
                 String modified = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
 
                 if (!modified.equals(sql)) {
-                    System.out.println("🎯 [HibernateInspector] Modified: " + modified);
+                    System.out.println("[SQL] [HibernateInspector] Modified: " + modified);
                 }
 
                 return modified;
 
             } catch (Exception e) {
-                System.err.println("⚠️ [HibernateInspector] Error: " + e.getMessage());
+                System.err.println("[WARN]️ [HibernateInspector] Error: " + e.getMessage());
                 return sql;
             }
         }

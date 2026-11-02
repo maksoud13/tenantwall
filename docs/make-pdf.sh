@@ -12,10 +12,10 @@ HTML="tenantwall-documentation.html"
 PDF="tenantwall.pdf"
 
 if [ ! -f "$HTML" ]; then
-    echo "❌ Error: $HTML not found"
+    echo "[ERROR] Error: $HTML not found"
     exit 1
 fi
-echo "✓ HTML: $HTML"
+echo "[OK] HTML: $HTML"
 
 # Find Chrome
 BROWSER=""
@@ -32,10 +32,10 @@ do
 done
 
 if [ -z "$BROWSER" ]; then
-    echo "❌ No Chrome/Edge found"
+    echo "[ERROR] No Chrome/Edge found"
     exit 1
 fi
-echo "✓ Browser: $BROWSER"
+echo "[OK] Browser: $BROWSER"
 
 # Convert path
 WIN_PATH=$(cygpath -w "$(pwd)/$HTML" 2>/dev/null || echo "$(pwd)/$HTML")
@@ -44,8 +44,8 @@ URI="file:///$WIN_PATH"
 
 PDF_WIN=$(cygpath -w "$(pwd)/$PDF" 2>/dev/null || echo "$(pwd)/$PDF")
 
-echo "✓ URI: $URI"
-echo "✓ Output: $PDF"
+echo "[OK] URI: $URI"
+echo "[OK] Output: $PDF"
 echo ""
 
 rm -f "$PDF"
@@ -58,11 +58,11 @@ echo "⏳ Converting..."
 if [ -f "$PDF" ]; then
     SIZE=$(stat -c%s "$PDF" 2>/dev/null || stat -f%z "$PDF")
     echo ""
-    echo "✅ SUCCESS"
+    echo "[OK] SUCCESS"
     echo "  File: $PDF"
     echo "  Size: $(awk "BEGIN{printf \"%.1f\", $SIZE/1024}") KB"
 else
     echo ""
-    echo "❌ FAILED — PDF not created"
+    echo "[ERROR] FAILED — PDF not created"
     exit 1
 fi

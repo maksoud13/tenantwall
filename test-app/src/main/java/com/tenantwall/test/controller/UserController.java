@@ -32,7 +32,7 @@ public class UserController {
         userRepository.save(new User("Ahmed", "TENANT_A"));
         userRepository.save(new User("Mohamed", "TENANT_B"));
         userRepository.save(new User("Sara", "TENANT_A"));
-        System.out.println("✅ Added 3 test users.");
+        System.out.println("[OK] Added 3 test users.");
     }
 
     // =========================================================

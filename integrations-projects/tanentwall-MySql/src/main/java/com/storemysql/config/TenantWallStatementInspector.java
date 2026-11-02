@@ -24,12 +24,12 @@ public class TenantWallStatementInspector implements StatementInspector {
             String modified = SmartSqlModifier.modify(sql, column, tenantId);
 
             if (!modified.equals(sql)) {
-                System.err.println("🎯 [Inspector] Modified: " + modified);
+                System.err.println("[SQL] [Inspector] Modified: " + modified);
             }
             return modified;
 
         } catch (Exception e) {
-            System.err.println("⚠️ [Inspector] Error: " + e.getMessage());
+            System.err.println("[WARN]️ [Inspector] Error: " + e.getMessage());
             return sql;  // fail-safe
         }
     }

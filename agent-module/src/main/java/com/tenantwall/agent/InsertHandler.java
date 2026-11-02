@@ -18,7 +18,7 @@ public class InsertHandler {
 
         // ─── Excluded table check ───
         if (isExcluded(insert.getTable())) {
-            System.out.println("⏭️ [InsertHandler] Table excluded, skipping: "
+            System.out.println("[SKIP] [InsertHandler] Table excluded, skipping: "
                     + insert.getTable().getName());
             return insert.toString();
         }
@@ -28,7 +28,7 @@ public class InsertHandler {
                 && !"Values".equals(select.getClass().getSimpleName());
 
         if (isInsertSelect) {
-            System.out.println("🟢 [InsertHandler] INSERT ... SELECT detected");
+            System.out.println("[INFO] [InsertHandler] INSERT ... SELECT detected");
             SelectHandler.handle(select, column, value);
             return insert.toString();
         }
@@ -44,7 +44,7 @@ public class InsertHandler {
         if (hasExplicitColumns) {
             for (Column col : columns) {
                 if (col.getColumnName().equalsIgnoreCase(column)) {
-                    System.out.println("✅ [InsertHandler] Filter column already exists");
+                    System.out.println("[OK] [InsertHandler] Filter column already exists");
                     return insert.toString();
                 }
             }
@@ -63,14 +63,14 @@ public class InsertHandler {
 
         // Mode 3: append hack — opt-in only
         if (Boolean.getBoolean("tenantwall.insert.appendTenant")) {
-            System.err.println("⚠️ [InsertHandler] No schema for '" + tableName
+            System.err.println("[WARN]️ [InsertHandler] No schema for '" + tableName
                     + "' → appending " + column + " as LAST column "
                     + "(DANGEROUS: only correct if " + column + " is the last column!)");
             return appendToEachRow(insert, column, value, "appended at end (hack mode)");
         }
 
         // Default: skip with actionable error
-        System.err.println("❌ [InsertHandler] Cannot inject into INSERT without column list "
+        System.err.println("[ERROR] [InsertHandler] Cannot inject into INSERT without column list "
                 + "for table '" + tableName + "'. Fix one of these:\n"
                 + "   (a) Use an explicit column list: INSERT INTO " + tableName
                 + " (a,b,c) VALUES (?,?,?)\n"
@@ -101,10 +101,10 @@ public class InsertHandler {
             } else {
                 items.add(new StringValue(value));
             }
-            System.out.println("✅ [InsertHandler] " + column + " = '" + value + "' "
+            System.out.println("[OK] [InsertHandler] " + column + " = '" + value + "' "
                     + label + " (" + (multiRow ? items.size() : 1) + " row(s))");
         } catch (Exception e) {
-            System.err.println("⚠️ [InsertHandler] append error: " + e.getMessage());
+            System.err.println("[WARN]️ [InsertHandler] append error: " + e.getMessage());
         }
         return insert.toString();
     }
@@ -123,7 +123,7 @@ public class InsertHandler {
             }
         }
         if (tenantPos < 0) {
-            System.err.println("⚠️ [InsertHandler] Column '" + column
+            System.err.println("[WARN]️ [InsertHandler] Column '" + column
                     + "' not in configured schema for '" + tableName + "' → skipping");
             return insert.toString();
         }
@@ -144,10 +144,10 @@ public class InsertHandler {
             } else {
                 mutateRow(items, totalColumns, tenantPos, value, tableName);
             }
-            System.out.println("✅ [InsertHandler] Injected " + column + " = '" + value
+            System.out.println("[OK] [InsertHandler] Injected " + column + " = '" + value
                     + "' at position " + (tenantPos + 1) + " in " + tableName);
         } catch (Exception e) {
-            System.err.println("⚠️ [InsertHandler] inject error: " + e.getMessage());
+            System.err.println("[WARN]️ [InsertHandler] inject error: " + e.getMessage());
         }
         return insert.toString();
     }
@@ -156,13 +156,13 @@ public class InsertHandler {
             int tenantPos, String value, String tableName) {
         int count = row.size();
         if (count == totalColumns) {
-            System.out.println("🔒 [InsertHandler] Overriding user-supplied tenant at pos "
+            System.out.println("[FORCE] [InsertHandler] Overriding user-supplied tenant at pos "
                     + (tenantPos + 1) + " in " + tableName);
             row.set(tenantPos, new StringValue(value));
         } else if (count == totalColumns - 1) {
             row.add(tenantPos, new StringValue(value));
         } else {
-            System.err.println("⚠️ [InsertHandler] Column count mismatch for " + tableName
+            System.err.println("[WARN]️ [InsertHandler] Column count mismatch for " + tableName
                     + ": got " + count + ", expected " + totalColumns
                     + " or " + (totalColumns - 1) + " → skipping row");
         }

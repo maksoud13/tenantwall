@@ -23,17 +23,17 @@ title(){ echo; printf "${BOLD}${CYAN}═══ %s ═══${NC}\n" "$*"; echo; 
 assert_eq() {
     local actual="$1" expected="$2" name="$3"
     if [ "$actual" = "$expected" ]; then
-        printf "${GREEN}✅ PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${GREEN}[OK] PASS${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         PASS=$((PASS + 1))
     else
-        printf "${RED}❌ FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
+        printf "${RED}[ERROR] FAIL${NC}  %s (expected: %s, got: %s)\n" "$name" "$expected" "$actual"
         FAIL=$((FAIL + 1))
     fi
 }
 
-assert_in()     { if [[ "$1" == *"$2"* ]]; then printf "${GREEN}✅ PASS${NC}  %s\n" "$3"; PASS=$((PASS + 1)); else printf "${RED}❌ FAIL${NC}  %s (missing: %s)\n" "$3" "$2"; FAIL=$((FAIL + 1)); fi; }
-assert_not_in() { if [[ "$1" != *"$2"* ]]; then printf "${GREEN}✅ PASS${NC}  %s\n" "$3"; PASS=$((PASS + 1)); else printf "${RED}❌ FAIL${NC}  %s (unexpectedly contains: %s)\n" "$3" "$2"; FAIL=$((FAIL + 1)); fi; }
-warn() { printf "${YELLOW}⚠️  WARN${NC}  %s\n" "$*"; WARN=$((WARN + 1)); }
+assert_in()     { if [[ "$1" == *"$2"* ]]; then printf "${GREEN}[OK] PASS${NC}  %s\n" "$3"; PASS=$((PASS + 1)); else printf "${RED}[ERROR] FAIL${NC}  %s (missing: %s)\n" "$3" "$2"; FAIL=$((FAIL + 1)); fi; }
+assert_not_in() { if [[ "$1" != *"$2"* ]]; then printf "${GREEN}[OK] PASS${NC}  %s\n" "$3"; PASS=$((PASS + 1)); else printf "${RED}[ERROR] FAIL${NC}  %s (unexpectedly contains: %s)\n" "$3" "$2"; FAIL=$((FAIL + 1)); fi; }
+warn() { printf "${YELLOW}[WARN]️  WARN${NC}  %s\n" "$*"; WARN=$((WARN + 1)); }
 
 CURL_BIN="curl"
 if command -v curl.exe >/dev/null 2>&1; then CURL_BIN="curl.exe"; fi
@@ -79,7 +79,7 @@ wait_for_oracle() {
             health=$(docker inspect -f '{{.State.Health.Status}}' "$ORACLE_CONTAINER" 2>/dev/null)
             if [ "$health" = "healthy" ]; then
                 echo ""
-                printf "  ${GREEN}✅${NC}  Container healthy (attempt ${i}/${max})\n"
+                printf "  ${GREEN}[OK]${NC}  Container healthy (attempt ${i}/${max})\n"
                 return 0
             fi
         fi
@@ -87,7 +87,7 @@ wait_for_oracle() {
         sleep 3
     done
     echo ""
-    printf "  ${RED}❌${NC}  Oracle container not healthy after $((max*3))s\n"
+    printf "  ${RED}[ERROR]${NC}  Oracle container not healthy after $((max*3))s\n"
     docker ps -a --filter "name=${ORACLE_CONTAINER}"
     docker logs "$ORACLE_CONTAINER" --tail 30
     return 1
@@ -103,14 +103,14 @@ wait_for_app() {
             -H "X-Tenant-Id: SHOP_ALPHA" "$BASE_URL/api/products" 2>/dev/null)
         if [ "$s" = "200" ]; then
             echo ""
-            printf "  ${GREEN}✅${NC}  App responded 200 (attempt ${i}/${max})\n"
+            printf "  ${GREEN}[OK]${NC}  App responded 200 (attempt ${i}/${max})\n"
             return 0
         fi
         echo -n "."
         sleep 1
     done
     echo ""
-    printf "  ${RED}❌${NC}  App not reachable\n"
+    printf "  ${RED}[ERROR]${NC}  App not reachable\n"
     return 1
 }
 
@@ -134,9 +134,9 @@ beta_total=$(oracle_q  "SELECT COUNT(*) FROM products WHERE tenant_id='SHOP_BETA
 echo "  SHOP_ALPHA: $alpha_total"
 echo "  SHOP_BETA:  $beta_total"
 if [ "${alpha_total:-0}" -gt 0 ] && [ "${beta_total:-0}" -gt 0 ]; then
-    printf "${GREEN}✅${NC}  DB has both tenants\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK]${NC}  DB has both tenants\n"; PASS=$((PASS + 1))
 else
-    printf "${RED}❌${NC}  DB missing tenant data\n"; FAIL=$((FAIL + 1))
+    printf "${RED}[ERROR]${NC}  DB missing tenant data\n"; FAIL=$((FAIL + 1))
 fi
 
 # ═══ STEP 2: READ ═══
@@ -218,7 +218,7 @@ echo "  $stats"
 py_calls=$(echo "$stats" | python -c "import json,sys;print(json.load(sys.stdin).get('pythonCalls',0))" 2>/dev/null)
 fb_calls=$(echo "$stats" | python -c "import json,sys;print(json.load(sys.stdin).get('fallbacks',0))"   2>/dev/null)
 if [ "${py_calls:-0}" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Python parser used ($py_calls calls)\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK] PASS${NC}  Python parser used ($py_calls calls)\n"; PASS=$((PASS + 1))
 else
     warn "Python parser NOT used"
 fi
@@ -230,7 +230,7 @@ cache=$(http_get "$BASE_URL/api/admin/cache-stats" "SHOP_ALPHA")
 echo "  $cache"
 hits=$(echo "$cache" | python -c "import json,sys;print(json.load(sys.stdin).get('hits',0))" 2>/dev/null)
 if [ "${hits:-0}" -gt 0 ]; then
-    printf "${GREEN}✅ PASS${NC}  Cache has hits ($hits)\n"; PASS=$((PASS + 1))
+    printf "${GREEN}[OK] PASS${NC}  Cache has hits ($hits)\n"; PASS=$((PASS + 1))
 else
     warn "Cache has 0 hits"
 fi
@@ -244,9 +244,9 @@ printf "  ${YELLOW}WARN: %d${NC}\n" "$WARN"
 echo
 
 if [ "$FAIL" -gt 0 ]; then
-    printf "${RED}${BOLD}❌ Some tests FAILED${NC}\n"; exit 1
+    printf "${RED}${BOLD}[ERROR] Some tests FAILED${NC}\n"; exit 1
 elif [ "$WARN" -gt 0 ]; then
-    printf "${YELLOW}${BOLD}⚠️  All passed, with warnings${NC}\n"; exit 0
+    printf "${YELLOW}${BOLD}[WARN]️  All passed, with warnings${NC}\n"; exit 0
 else
-    printf "${GREEN}${BOLD}🎉 All tests passed!${NC}\n"; exit 0
+    printf "${GREEN}${BOLD}[DONE] All tests passed!${NC}\n"; exit 0
 fi

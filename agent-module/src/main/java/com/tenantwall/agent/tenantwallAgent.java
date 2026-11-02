@@ -15,7 +15,7 @@ import java.sql.Statement;
 public class tenantwallAgent {
 
     public static void premain(String agentArgs, Instrumentation inst) {
-        System.out.println("🛡️ tenantwall Agent Loaded (v4 - Hibernate + Argument)");
+        System.out.println("[AGENT] tenantwall Agent Loaded (v4 - Hibernate + Argument)");
         TenantwallConfig.initialize(agentArgs);
 
         ElementMatcher<? super TypeDescription> ignore = ElementMatchers
@@ -27,18 +27,18 @@ public class tenantwallAgent {
             @Override
             public void onTransformation(TypeDescription td, ClassLoader cl, JavaModule m,
                                          boolean loaded, DynamicType dt) {
-                System.out.println("✅ [ByteBuddy] Transformed: " + td.getName());
+                System.out.println("[OK] [ByteBuddy] Transformed: " + td.getName());
             }
             @Override
             public void onDiscovery(String tn, ClassLoader cl, JavaModule m, boolean loaded) {
                 if (tn.contains("StatementPreparer") || tn.contains("HikariProxyConnection")) {
-                    System.out.println("🔍 [ByteBuddy] Discovered: " + tn + " loaded=" + loaded);
+                    System.out.println("[DEBUG] [ByteBuddy] Discovered: " + tn + " loaded=" + loaded);
                 }
             }
             @Override
             public void onError(String tn, ClassLoader cl, JavaModule m, boolean loaded, Throwable t) {
                 if (tn.contains("StatementPreparer") || tn.contains("Connection")) {
-                    System.out.println("❌ [ByteBuddy] Error: " + tn + " → " + t);
+                    System.out.println("[ERROR] [ByteBuddy] Error: " + tn + " → " + t);
                 }
             }
         };
@@ -78,6 +78,6 @@ public class tenantwallAgent {
                                 .on(ElementMatchers.named("prepareStatement"))))
                 .installOn(inst);
 
-        System.out.println("🛡️ Interceptors installed (v4)");
+        System.out.println("[AGENT] Interceptors installed (v4)");
     }
 }

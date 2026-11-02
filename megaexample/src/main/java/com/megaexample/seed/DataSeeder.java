@@ -40,7 +40,7 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         System.out.println("\n╔══════════════════════════════════════════════════════════╗");
-        System.out.println("║  🚀 Data Seeder — 20 tenants × ~88K rows = ~1.77M rows    ║");
+        System.out.println("║  [START] Data Seeder — 20 tenants × ~88K rows = ~1.77M rows    ║");
         System.out.println("╚══════════════════════════════════════════════════════════╝\n");
 
         long start = System.currentTimeMillis();
@@ -50,7 +50,7 @@ public class DataSeeder implements CommandLineRunner {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM products")) {
             if (rs.next() && rs.getLong(1) > 0) {
-                System.out.printf("⚠️  Already seeded: %,d products. Skipping.%n%n", rs.getLong(1));
+                System.out.printf("[WARN]  Already seeded: %,d products. Skipping.%n%n", rs.getLong(1));
                 printSummary();
                 return;
             }
@@ -73,11 +73,11 @@ public class DataSeeder implements CommandLineRunner {
                 conn.commit();
             }
             long tElapsed = System.currentTimeMillis() - tStart;
-            System.out.printf("  ✓ %s seeded in %.1fs%n", tenant, tElapsed / 1000.0);
+            System.out.printf("  [OK] %s seeded in %.1fs%n", tenant, tElapsed / 1000.0);
         }
 
         long total = System.currentTimeMillis() - start;
-        System.out.printf("%n✅ Seeding complete in %.1fs (%d minutes)%n%n",
+        System.out.printf("%n[OK] Seeding complete in %.1fs (%d minutes)%n%n",
                 total / 1000.0, total / 60000);
         printSummary();
     }
@@ -86,7 +86,7 @@ public class DataSeeder implements CommandLineRunner {
     //  LOOKUP TABLES (small, fixed data)
     // ═══════════════════════════════════════════════════════════
     private void seedLookups(Connection conn) throws SQLException {
-        System.out.println("📋 Seeding lookup tables...");
+        System.out.println("[COLS] Seeding lookup tables...");
 
         // countries
         try (PreparedStatement ps = conn.prepareStatement(
@@ -209,7 +209,7 @@ public class DataSeeder implements CommandLineRunner {
             ps.executeBatch();
         }
 
-        System.out.println("  ✓ Lookup tables seeded (7 tables)\n");
+        System.out.println("  [OK] Lookup tables seeded (7 tables)\n");
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -657,7 +657,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private void printSummary() throws SQLException {
         System.out.println("╔══════════════════════════════════════════════════════════╗");
-        System.out.println("║  📊 Data Summary                                        ║");
+        System.out.println("║  [DATA] Data Summary                                        ║");
         System.out.println("╚══════════════════════════════════════════════════════════╝");
         String[] tables = {"products", "product_variants", "customers", "orders",
                 "order_items", "payments", "payment_transactions",

@@ -33,7 +33,7 @@ public class ProductController {
      * - 403 ISOLATED      → product exists but belongs to ANOTHER tenant (isolation WORKING)
      * - 404 NOT_FOUND     → product doesn't exist in any tenant
      *
-     * ⚠️ In production, return 404 for BOTH 403 and 404 cases
+     * [WARN]️ In production, return 404 for BOTH 403 and 404 cases
      * (to avoid leaking that the resource exists elsewhere).
      */
     @GetMapping("/{id}")

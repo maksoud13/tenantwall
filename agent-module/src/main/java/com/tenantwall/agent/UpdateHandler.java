@@ -20,7 +20,7 @@ public class UpdateHandler {
 
         // ─── Excluded table check ───
         if (isExcluded(update.getTable())) {
-            System.out.println("⏭️ [UpdateHandler] Table excluded, skipping: "
+            System.out.println("[SKIP]️ [UpdateHandler] Table excluded, skipping: "
                     + update.getTable().getName());
             return update.toString();
         }
@@ -28,10 +28,10 @@ public class UpdateHandler {
         Expression currentWhere = update.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("✅ [UpdateHandler] Filter already exists, skipping");
+            System.out.println("[OK] [UpdateHandler] Filter already exists, skipping");
         } else {
             if (currentWhere == null) {
-                System.out.println("🛡️ [UpdateHandler] UPDATE without WHERE detected");
+                System.out.println("[AGENT] [UpdateHandler] UPDATE without WHERE detected");
             }
 
             String prefix = extractPrefix(update.getTable());

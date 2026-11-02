@@ -12,17 +12,17 @@ public class TenantWallStatementInspector implements StatementInspector {
                 return sql;
             }
 
-            // 🎯 استخدم SmartSqlModifier (نفس اللي الـ Agent بيستخدمه)
+            // [SQL] استخدم SmartSqlModifier (نفس اللي الـ Agent بيستخدمه)
             String modified = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
             
             if (!modified.equals(sql)) {
-                System.out.println("🎯 [HibernateInspector] Modified: " + modified);
+                System.out.println("[SQL] [HibernateInspector] Modified: " + modified);
             }
             
             return modified;
 
         } catch (Exception e) {
-            System.err.println("⚠️ [HibernateInspector] Error: " + e.getMessage());
+            System.err.println("[WARN] [HibernateInspector] Error: " + e.getMessage());
             return sql; // fallback: original SQL
         }
     }

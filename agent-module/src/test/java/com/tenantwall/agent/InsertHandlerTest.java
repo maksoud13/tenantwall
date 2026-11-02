@@ -54,7 +54,7 @@ class InsertHandlerTest {
         String sql = "INSERT INTO orders_backup (id, total) SELECT id, total FROM orders WHERE total > 100";
         String result = SqlModifier.addFilter(sql, "tenant_id", "TENANT_A");
 
-        // ✅ FLEXIBLE: works with or without alias prefix
+        // [OK] FLEXIBLE: works with or without alias prefix
         // old: AND tenant_id = 'TENANT_A'
         // new: AND orders.tenant_id = 'TENANT_A'
         assertTrue(result.contains("tenant_id = 'TENANT_A'"),

@@ -18,7 +18,7 @@ spring:
     name: megaexample
 
   datasource:
-    # ⚠️ Performance-tuned MySQL URL
+    # [WARN]️ Performance-tuned MySQL URL
     # cachePrepStmts + useServerPrepStmts → 2-3x faster prepared statements
     # rewriteBatchedStatements → 10-50x faster batch inserts (critical for seeding)
     url: jdbc:mysql://localhost:3306/mega_demo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=500&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&useLocalSessionState=true&cacheResultSetMetadata=true&cacheServerConfiguration=true&elideSetAutoCommits=true&maintainTimeStats=false
@@ -41,7 +41,7 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        # ⚠️ Batch processing for seeding
+        # [WARN]️ Batch processing for seeding
         jdbc:
           batch_size: 100
           fetch_size: 100
@@ -75,7 +75,7 @@ management:
     tags:
       application: megaexample
     distribution:
-      # ⚠️ Histograms for P50/P95/P99 percentiles
+      # [WARN]️ Histograms for P50/P95/P99 percentiles
       percentiles-histogram:
         http.server.requests: true
         hikaricp.connections.acquire: true
@@ -96,7 +96,7 @@ logging:
     com.megaexample: INFO
     com.zaxxer.hikari: WARN
     org.hibernate: WARN
-    # ⚠️ TenantWall logs — keep at INFO to verify it's working
+    # [WARN]️ TenantWall logs — keep at INFO to verify it's working
     TenantWall: INFO
 
 # ═══════════════════════════════════════════════════════════════

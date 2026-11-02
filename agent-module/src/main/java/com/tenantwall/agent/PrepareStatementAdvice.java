@@ -22,7 +22,7 @@ public class PrepareStatementAdvice {
 
         if (!modified.equals(sql)) {
             sql = modified;
-            System.err.println("✅ [PrepStmt] Modified: " + sql);
+            System.err.println("[OK] [PrepStmt] Modified: " + sql);
         }
     }
 }

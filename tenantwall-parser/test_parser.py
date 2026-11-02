@@ -20,8 +20,8 @@ response = requests.post(
 # اطبع النتيجة
 data = response.json()
 if data.get("success"):
-    print("✅ SUCCESS\n")
+    print("[OK] SUCCESS\n")
     print(data["result"])
 else:
-    print("❌ FAILED")
+    print("[ERROR] FAILED")
     print(data.get("error"))

@@ -58,15 +58,15 @@ public class SqlModifier {
             }
 
             // Unsupported (CREATE, DROP, ALTER, TRUNCATE, ...)
-            System.out.println("⚠️ [SqlModifier] Unsupported statement: "
+            System.out.println("[WARN] [SqlModifier] Unsupported statement: "
                     + stmt.getClass().getSimpleName());
             return sql;
 
         } catch (JSQLParserException e) {
-            System.err.println("⚠️ [SqlModifier] Parse error: " + e.getMessage());
+            System.err.println("[WARN] [SqlModifier] Parse error: " + e.getMessage());
             return sql;
         } catch (Exception e) {
-            System.err.println("⚠️ [SqlModifier] Error: " + e.getMessage());
+            System.err.println("[WARN] [SqlModifier] Error: " + e.getMessage());
             return sql;
         }
     }

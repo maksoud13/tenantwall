@@ -50,7 +50,7 @@ public class SmartSqlModifier {
             result = tryPython(sql, column, value);
             if (result == null) {
                 fallbackCount++;
-                System.out.println("⚠️ [SmartModifier] Python failed, falling back to local");
+                System.out.println("[WARN]️ [SmartModifier] Python failed, falling back to local");
                 result = tryLocal(sql, column, value);
             } else {
                 pythonCallCount++;
@@ -76,10 +76,10 @@ public class SmartSqlModifier {
         try {
             String dialect = TenantwallConfig.getDialect();
             String result = PythonServiceClient.modify(sql, column, value, dialect);
-            System.out.println("🐍 [SmartModifier] Processed by Python service");
+            System.out.println("[PYTHON] [SmartModifier] Processed by Python service");
             return result;
         } catch (PythonServiceClient.PythonServiceException e) {
-            System.err.println("❌ [SmartModifier] Python error: " + e.getMessage());
+            System.err.println("[ERROR] [SmartModifier] Python error: " + e.getMessage());
             return null;
         }
     }
@@ -87,10 +87,10 @@ public class SmartSqlModifier {
     private static String tryLocal(String sql, String column, String value) {
         try {
             String result = SqlModifier.addFilter(sql, column, value);
-            System.out.println("⚡ [SmartModifier] Processed locally");
+            System.out.println("[LOCAL] [SmartModifier] Processed locally");
             return result;
         } catch (Exception e) {
-            System.err.println("❌ [SmartModifier] Local error: " + e.getMessage());
+            System.err.println("[ERROR] [SmartModifier] Local error: " + e.getMessage());
             return null;
         }
     }

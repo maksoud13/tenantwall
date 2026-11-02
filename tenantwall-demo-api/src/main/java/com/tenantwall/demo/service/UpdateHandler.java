@@ -17,10 +17,10 @@ public class UpdateHandler {
         Expression currentWhere = update.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("✅ [UpdateHandler] Filter already exists, skipping");
+            System.out.println("[OK] [UpdateHandler] Filter already exists, skipping");
         } else {
             if (currentWhere == null) {
-                System.out.println("🛡️ [UpdateHandler] UPDATE without WHERE detected");
+                System.out.println("[AGENT]️ [UpdateHandler] UPDATE without WHERE detected");
             }
 
             Expression newWhere = SqlModifierUtils.addFilterToWhere(

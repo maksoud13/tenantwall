@@ -19,7 +19,7 @@ public class DeleteHandler {
 
         // ─── Excluded table check ───
         if (isExcluded(delete.getTable())) {
-            System.out.println("⏭️ [DeleteHandler] Table excluded, skipping: "
+            System.out.println("[SKIP]️ [DeleteHandler] Table excluded, skipping: "
                     + delete.getTable().getName());
             return delete.toString();
         }
@@ -27,10 +27,10 @@ public class DeleteHandler {
         Expression currentWhere = delete.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("✅ [DeleteHandler] Filter already exists, skipping");
+            System.out.println("[OK] [DeleteHandler] Filter already exists, skipping");
         } else {
             if (currentWhere == null) {
-                System.out.println("🛡️ [DeleteHandler] DELETE without WHERE detected");
+                System.out.println("[AGENT] [DeleteHandler] DELETE without WHERE detected");
             }
 
             String prefix = extractPrefix(delete.getTable());

@@ -63,7 +63,7 @@ public class SqlModifierDebugger {
                 run("UPDATE with WHERE",
                                 "UPDATE orders SET status = 'DONE' WHERE id = 5");
 
-                run("UPDATE without WHERE (⚠️ dangerous)",
+                run("UPDATE without WHERE ([WARN] dangerous)",
                                 "UPDATE orders SET status = 'DONE'");
 
                 run("UPDATE with OR",
@@ -77,7 +77,7 @@ public class SqlModifierDebugger {
                 run("DELETE with WHERE",
                                 "DELETE FROM orders WHERE id = 5");
 
-                run("DELETE without WHERE (⚠️ dangerous)",
+                run("DELETE without WHERE ([WARN] dangerous)",
                                 "DELETE FROM orders");
 
                 run("DELETE with OR",
@@ -91,7 +91,7 @@ public class SqlModifierDebugger {
                 run("INSERT with columns",
                                 "INSERT INTO orders (id, total) VALUES (1, 500)");
 
-                run("INSERT without columns (⚠️ skip)",
+                run("INSERT without columns ([WARN] skip)",
                                 "INSERT INTO orders VALUES (1, 500)");
 
                 run("INSERT with multiple rows",
@@ -104,7 +104,7 @@ public class SqlModifierDebugger {
                 // Summary
                 // ═══════════════════════════════════════════════════════
                 System.out.println("\n╔══════════════════════════════════════════════════════╗");
-                System.out.println("║                    ✅ Tests Complete                  ║");
+                System.out.println("║                    [OK] Tests Complete                  ║");
                 System.out.println("╚══════════════════════════════════════════════════════╝");
         }
 
@@ -125,12 +125,12 @@ public class SqlModifierDebugger {
                 try {
                         String modified = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
                         if (modified.equals(sql)) {
-                                System.out.println("   Output: " + modified + "   ⚠️ (unchanged)");
+                                System.out.println("   Output: " + modified + "   [WARN] (unchanged)");
                         } else {
                                 System.out.println("   Output: " + modified);
                         }
                 } catch (Exception e) {
-                        System.out.println("   ❌ Error: " + e.getMessage());
+                        System.out.println("   [ERROR] Error: " + e.getMessage());
                         e.printStackTrace();
                 }
         }

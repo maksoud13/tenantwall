@@ -31,7 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         // نشوف لو فيه بيانات قبل ما نضيف عشان ما نكررش
         if (userRepo.count() > 100) {
-            System.out.println("✅ البيانات موجودة مسبقاً، تخطي الإضافة.");
+            System.out.println("[OK] البيانات موجودة مسبقاً، تخطي الإضافة.");
             return;
         }
 
@@ -67,7 +67,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         orderRepo.saveAll(orders);
 
-        System.out.println("✅ تم إضافة " + users.size() + " مستخدم، " + customers.size() + " عميل، " + orders.size() + " طلب.");
+        System.out.println("[OK] تم إضافة " + users.size() + " مستخدم، " + customers.size() + " عميل، " + orders.size() + " طلب.");
          com.tenantwall.agent.SmartSqlModifier.clearCache();
    
     }

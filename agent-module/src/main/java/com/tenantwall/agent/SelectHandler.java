@@ -41,7 +41,7 @@ public class SelectHandler {
                 return false; // at least one non-excluded table → filter
             }
         }
-        System.out.println("⏭️ [SelectHandler] All tables excluded, skipping: " + tables);
+        System.out.println("[SKIP] [SelectHandler] All tables excluded, skipping: " + tables);
         return true;
     }
 
@@ -57,7 +57,7 @@ public class SelectHandler {
                 process(inner, column, value);
             }
         } else {
-            System.out.println("⚠️ [SelectHandler] Unsupported Select type: "
+            System.out.println("[WARN] [SelectHandler] Unsupported Select type: "
                     + select.getClass().getSimpleName());
         }
     }
@@ -73,7 +73,7 @@ public class SelectHandler {
 
         // 2. WHERE — مع alias
         if (SqlModifierUtils.alreadyHasFilter(plainSelect.getWhere(), column)) {
-            System.out.println("✅ [SelectHandler] Filter already exists, skipping WHERE");
+            System.out.println("[OK] [SelectHandler] Filter already exists, skipping WHERE");
         } else {
             Expression newWhere = SqlModifierUtils.addFilterToWhere(
                     plainSelect.getWhere(), column, value, fromAlias); // ← alias
@@ -137,7 +137,7 @@ public class SelectHandler {
         }
         for (WithItem item : withItems) {
             if (item.getSelect() != null) {
-                System.out.println("🟢 [SelectHandler] Processing CTE: " + item.getAlias());
+                System.out.println("[INFO] [SelectHandler] Processing CTE: " + item.getAlias());
                 process(item.getSelect(), column, value);
             }
         }

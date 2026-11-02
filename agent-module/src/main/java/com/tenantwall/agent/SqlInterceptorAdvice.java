@@ -22,7 +22,7 @@ public class SqlInterceptorAdvice {
 
         if (!modified.equals(sql)) {
             sql = modified;
-            System.err.println("✅ [Statement] Modified: " + sql);
+            System.err.println("[OK] [Statement] Modified: " + sql);
         }
     }
 }
