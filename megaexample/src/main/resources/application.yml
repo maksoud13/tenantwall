@@ -1,0 +1,109 @@
+# ═══════════════════════════════════════════════════════════════
+#  TenantWall — megaexample Configuration
+#  Optimized for: i7-9850H (6C/12T), 32GB RAM, MySQL Docker
+# ═══════════════════════════════════════════════════════════════
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    accept-count: 100
+    max-connections: 8192
+    connection-timeout: 20000
+
+spring:
+  application:
+    name: megaexample
+
+  datasource:
+    # ⚠️ Performance-tuned MySQL URL
+    # cachePrepStmts + useServerPrepStmts → 2-3x faster prepared statements
+    # rewriteBatchedStatements → 10-50x faster batch inserts (critical for seeding)
+    url: jdbc:mysql://localhost:3306/mega_demo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=500&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&useLocalSessionState=true&cacheResultSetMetadata=true&cacheServerConfiguration=true&elideSetAutoCommits=true&maintainTimeStats=false
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      pool-name: mega-pool
+      maximum-pool-size: 50
+      minimum-idle: 20
+      connection-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      auto-commit: true
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        # ⚠️ Batch processing for seeding
+        jdbc:
+          batch_size: 100
+          fetch_size: 100
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        # Disable Hibernate stats (overhead in load test)
+        generate_statistics: false
+        # Cache tuning
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+
+  sql:
+    init:
+      mode: never  # Schema created manually via docker exec
+
+# ═══════════════════════════════════════════════════════════════
+#  Actuator — Prometheus metrics for load test analysis
+# ═══════════════════════════════════════════════════════════════
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: megaexample
+    distribution:
+      # ⚠️ Histograms for P50/P95/P99 percentiles
+      percentiles-histogram:
+        http.server.requests: true
+        hikaricp.connections.acquire: true
+      sla:
+        http.server.requests: 1ms,5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s
+    enable:
+      jvm: true
+      system: true
+      hikaricp: true
+      tomcat: true
+
+# ═══════════════════════════════════════════════════════════════
+#  Logging — keep quiet during load test
+# ═══════════════════════════════════════════════════════════════
+logging:
+  level:
+    root: WARN
+    com.megaexample: INFO
+    com.zaxxer.hikari: WARN
+    org.hibernate: WARN
+    # ⚠️ TenantWall logs — keep at INFO to verify it's working
+    TenantWall: INFO
+
+# ═══════════════════════════════════════════════════════════════
+#  Springdoc — Swagger UI
+# ═══════════════════════════════════════════════════════════════
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

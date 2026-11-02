@@ -1,0 +1,30 @@
+# Maven
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Test results
+results/baseline/*
+results/intercepted/*
+!results/baseline/.gitkeep
+!results/intercepted/.gitkeep
+!results/analysis/
+
+# Environment
+.env
+*.properties.local
+
+# Docker
+data/
+*.pid
