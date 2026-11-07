@@ -21,6 +21,7 @@
 
     <modules>
         <module>agent-module</module>
+        <module>tenantwall-spring-boot-starter</module>
         <module>test-app</module>
        
     </modules>

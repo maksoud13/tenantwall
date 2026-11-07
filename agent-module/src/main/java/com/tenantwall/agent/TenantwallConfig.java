@@ -51,6 +51,13 @@ public final class TenantwallConfig {
         SKIP, APPEND, FAIL
     }
 
+    // ═══ Tenant Resolution (NEW — for auto-config) ═══
+    private static volatile String tenantStrategy = "header";
+    private static volatile String tenantHeaderName = "X-Tenant-Id";
+    private static volatile String tenantFixedValue = null;
+    private static volatile String tenantSessionKey = "TENANT_ID";
+    private static volatile String tenantCookieName = "tenant_id";
+
     private TenantwallConfig() {
     }
 
@@ -100,6 +107,26 @@ public final class TenantwallConfig {
         return schemas.get(table.toLowerCase(Locale.ROOT));
     }
 
+    // ═══ Tenant Resolution Getters (NEW) ═══
+    public static String getTenantStrategy() {
+        return tenantStrategy;
+    }
+
+    public static String getTenantHeaderName() {
+        return tenantHeaderName;
+    }
+
+    public static String getTenantFixedValue() {
+        return tenantFixedValue;
+    }
+
+    public static String getTenantSessionKey() {
+        return tenantSessionKey;
+    }
+
+    public static String getTenantCookieName() {
+        return tenantCookieName;
+    }
     // ═══════════════════════════════════════════════════════════════
     // Programmatic setters (runtime overrides)
     // ═══════════════════════════════════════════════════════════════
@@ -246,7 +273,12 @@ public final class TenantwallConfig {
         dialect = getStr(p, "tenantwall.parser.dialect", dialect);
 
         insertStrategy = parseInsert(p.getProperty("tenantwall.insert.strategy", insertStrategy.name()));
-
+        // ═══ Tenant Resolution (NEW) ═══
+        tenantStrategy = getStr(p, "tenantwall.tenant.strategy", tenantStrategy);
+        tenantHeaderName = getStr(p, "tenantwall.tenant.headerName", tenantHeaderName);
+        tenantFixedValue = getStr(p, "tenantwall.tenant.fixedValue", tenantFixedValue);
+        tenantSessionKey = getStr(p, "tenantwall.tenant.sessionKey", tenantSessionKey);
+        tenantCookieName = getStr(p, "tenantwall.tenant.cookieName", tenantCookieName);
         // Schemas
         for (String key : p.stringPropertyNames()) {
             if (key.startsWith("tenantwall.schema.")) {
@@ -307,4 +339,5 @@ public final class TenantwallConfig {
         // TENANTWALL_FILTER_COLUMN → tenantwall.filter.column
         return envKey.toLowerCase(Locale.ROOT).replace('_', '.');
     }
+
 }

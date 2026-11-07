@@ -1,5 +1,8 @@
-# 🛡️ TenantWall
+<div align="center">
+  <img src="./assets/tenantwalllogo.svg" alt="TenantWall - Integration Agent" width="100%" />
+</div>
 
+<br />
 > **Zero-code multi-tenant data isolation for any JDBC database.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./docs/13-license.md)
