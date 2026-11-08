@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════
+#  TenantWall Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+# ═══ Core ═══
+tenantwall.enabled=true
+tenantwall.filter.column=tenant_id
+
+# [WARN] For load test: use "skip" so startup/seed don't crash
+# Switch to "fail" only AFTER you verify all paths have tenant context
+tenantwall.filter.onMissing=skip
+
+# ═══ [HOT] CRITICAL: Excluded lookup tables (no tenant_id) ═══
+# These 7 tables have NO tenant_id column → MUST be excluded
+tenantwall.filter.excludedTables=countries,currencies,payment_methods,shipping_carriers,product_attributes,roles,permissions,flyway_schema_history
+
+# ═══ Parser ═══
+# Python parser handles complex SQL (CTEs, window functions)
+# If it's down → falls back to local JSqlParser
+tenantwall.parser.url=http://localhost:8000
+tenantwall.parser.dialect=mysql
+
+# ═══ INSERT strategy ═══
+# skip = don't inject for INSERT without column list (safest)
+# append = inject as last column (only if tenant_id is last)
+# fail = throw exception
+tenantwall.insert.strategy=skip
+
+
+# ═══ Tenant Resolution — pick EXACTLY ONE strategy ═══
+# Valid values: header | fixed | session | cookie | jwt
+# Extra keys for non-selected strategies are ignored (warning printed).
+tenantwall.tenant.strategy=header
+
+# ── strategy=header ──
+tenantwall.tenant.headerName=X-Tenant-Id
+# curl -H "X-Tenant-Id: TENANT_001" ...
+
+# ── strategy=fixed ──
+# tenantwall.tenant.fixedValue=TENANT_001
+# Every request forced to this tenant. Useful for single-tenant deploys.
+
+# ── strategy=session ──
+# tenantwall.tenant.sessionKey=TENANT_ID
+# POST /api/admin/session/TENANT_001 → then reuse JSESSIONID
+
+# ── strategy=cookie ──
+# tenantwall.tenant.cookieName=tenant_id
+# curl --cookie "tenant_id=TENANT_001" ...
+
+# ── strategy=jwt ──
+# tenantwall.tenant.jwtClaim=tenant_id
+# tenantwall.tenant.jwtHeader=Authorization
+# tenantwall.tenant.jwtPrefix=Bearer 
+# NOTE: JWT payload is DECODED, not verified.
+#       Verify signature upstream (API gateway / Spring Security).

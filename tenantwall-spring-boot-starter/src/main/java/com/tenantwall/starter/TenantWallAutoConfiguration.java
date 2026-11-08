@@ -13,10 +13,12 @@ import org.springframework.core.annotation.Order;
 /**
  * Spring Boot auto-configuration for TenantWall.
  *
- * <p>Registers a {@link TenantWallFilter} bean at highest precedence,
+ * <p>
+ * Registers a {@link TenantWallFilter} bean at highest precedence,
  * so tenant context is available before any other filter or controller runs.
  *
- * <p>Activated automatically when the app starts. User does not need to
+ * <p>
+ * Activated automatically when the app starts. User does not need to
  * declare any beans or filters in their code.
  */
 @AutoConfiguration
@@ -28,6 +30,7 @@ public class TenantWallAutoConfiguration {
     @ConditionalOnMissingBean(name = "tenantWallFilter")
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public Filter tenantWallFilter() {
+        TenantwallConfig.validate(); // fail fast on bad config
         String strategy = TenantwallConfig.getTenantStrategy();
         System.out.println("[AGENT] Auto-registering TenantWallFilter (strategy: " + strategy + ")");
         return new TenantWallFilter();

@@ -40,6 +40,11 @@ public final class TenantwallConfig {
     // ═══ INSERT ═══
     private static volatile InsertStrategy insertStrategy = InsertStrategy.SKIP;
 
+    // ═══ Tenant Resolution: JWT (NEW) ═══
+    private static volatile String tenantJwtClaim = "tenant_id";
+    private static volatile String tenantJwtHeader = "Authorization";
+    private static volatile String tenantJwtPrefix = "Bearer ";
+
     // ═══ Schema ═══
     private static final Map<String, List<String>> schemas = new HashMap<>();
 
@@ -105,6 +110,18 @@ public final class TenantwallConfig {
         if (table == null)
             return null;
         return schemas.get(table.toLowerCase(Locale.ROOT));
+    }
+
+    public static String getTenantJwtClaim() {
+        return tenantJwtClaim;
+    }
+
+    public static String getTenantJwtHeader() {
+        return tenantJwtHeader;
+    }
+
+    public static String getTenantJwtPrefix() {
+        return tenantJwtPrefix;
     }
 
     // ═══ Tenant Resolution Getters (NEW) ═══
@@ -198,6 +215,10 @@ public final class TenantwallConfig {
         // 5) Apply
         applyAll(merged);
 
+        // 6) Validate + warn ← السطرين دول هما اللي ناقصين
+        validate();
+        warnConflictingStrategies(merged);
+
         System.out.println("[TenantWall] Config: enabled=" + enabled
                 + ", column=" + filterColumn
                 + ", parser=" + (isParserEnabled() ? parserUrl : "disabled")
@@ -279,6 +300,11 @@ public final class TenantwallConfig {
         tenantFixedValue = getStr(p, "tenantwall.tenant.fixedValue", tenantFixedValue);
         tenantSessionKey = getStr(p, "tenantwall.tenant.sessionKey", tenantSessionKey);
         tenantCookieName = getStr(p, "tenantwall.tenant.cookieName", tenantCookieName);
+        tenantStrategy = getStr(p, "tenantwall.tenant.strategy", tenantStrategy).trim().toLowerCase(Locale.ROOT);
+        tenantJwtClaim = getStr(p, "tenantwall.tenant.jwtClaim", tenantJwtClaim);
+        tenantJwtHeader = getStr(p, "tenantwall.tenant.jwtHeader", tenantJwtHeader);
+        tenantJwtPrefix = getStr(p, "tenantwall.tenant.jwtPrefix", tenantJwtPrefix);
+
         // Schemas
         for (String key : p.stringPropertyNames()) {
             if (key.startsWith("tenantwall.schema.")) {
@@ -338,6 +364,68 @@ public final class TenantwallConfig {
     private static String toDotKey(String envKey) {
         // TENANTWALL_FILTER_COLUMN → tenantwall.filter.column
         return envKey.toLowerCase(Locale.ROOT).replace('_', '.');
+    }
+
+    public static void validate() {
+        String s = (tenantStrategy == null) ? "" : tenantStrategy.trim().toLowerCase(Locale.ROOT);
+        switch (s) {
+            case "header" -> {
+                if (isBlank(tenantHeaderName))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=header requires tenantwall.tenant.headerName");
+            }
+            case "fixed" -> {
+                if (isBlank(tenantFixedValue))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=fixed requires tenantwall.tenant.fixedValue");
+            }
+            case "session" -> {
+                if (isBlank(tenantSessionKey))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=session requires tenantwall.tenant.sessionKey");
+            }
+            case "cookie" -> {
+                if (isBlank(tenantCookieName))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=cookie requires tenantwall.tenant.cookieName");
+            }
+            case "jwt" -> {
+                if (isBlank(tenantJwtClaim))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=jwt requires tenantwall.tenant.jwtClaim");
+                if (isBlank(tenantJwtHeader))
+                    throw new IllegalStateException(
+                            "[TenantWall] strategy=jwt requires tenantwall.tenant.jwtHeader");
+            }
+            default -> throw new IllegalStateException(
+                    "[TenantWall] Invalid tenantwall.tenant.strategy='" + tenantStrategy + "'. " +
+                            "Must be one of: header, fixed, session, cookie, jwt");
+        }
+    }
+
+    /**
+     * Warns when config keys for a non-selected strategy are also present,
+     * to prevent developer confusion ("pick only one").
+     */
+    private static void warnConflictingStrategies(Properties p) {
+        String active = tenantStrategy;
+        Map<String, String> keys = Map.of(
+                "header", "tenantwall.tenant.headerName",
+                "fixed", "tenantwall.tenant.fixedValue",
+                "session", "tenantwall.tenant.sessionKey",
+                "cookie", "tenantwall.tenant.cookieName",
+                "jwt", "tenantwall.tenant.jwtClaim");
+        for (Map.Entry<String, String> e : keys.entrySet()) {
+            if (!e.getKey().equals(active) && p.getProperty(e.getValue()) != null) {
+                System.err.println("[TenantWall] WARNING: strategy=" + active
+                        + " but " + e.getValue() + " is also set (ignored). "
+                        + "Pick only one strategy.");
+            }
+        }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
 }
