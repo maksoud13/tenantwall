@@ -14,9 +14,11 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/admin/session")
+
 public class AdminSessionController {
 
     @PostMapping("/{tenant}")
+   
     public Map<String, Object> setTenant(@PathVariable String tenant, HttpSession session) {
         session.setAttribute("TENANT_ID", tenant);
         return Map.of("ok", true, "tenant", tenant, "sessionId", session.getId());
