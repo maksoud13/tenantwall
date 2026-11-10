@@ -1,5 +1,6 @@
 package com.tenantwall.agent;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,7 +15,6 @@ import java.time.Duration;
  */
 public class PythonServiceClient {
 
-    
     private static final String BASE_URL = TenantwallConfig.getParserUrl();
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -95,7 +95,10 @@ public class PythonServiceClient {
                     request, HttpResponse.BodyHandlers.ofString());
 
             return response.statusCode() == 200;
-        } catch (Exception e) {
+        } catch (IOException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // preserve interrupt flag
             return false;
         }
     }

@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # Job 1: Build + Unit Tests + Coverage Gate
+  # ═══════════════════════════════════════════════════════════════
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build (skip tests)
+        run: mvn -B -ntp clean install -DskipTests
+
+      - name: Unit tests
+        run: mvn -B -ntp test
+
+      - name: Verify (unit + IT + coverage gate)
+        run: mvn -B -ntp verify
+
+      - name: Upload JaCoCo report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: |
+            **/target/site/jacoco/**
+            **/target/jacoco-*.exec
+          retention-days: 7
+
+      - name: Codecov upload
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: |
+            ./agent-module/target/site/jacoco/jacoco.xml
+            ./tenantwall-spring-boot-starter/target/site/jacoco/jacoco.xml
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 2: Integration Tests (Testcontainers — MySQL, Postgres)
+  # ═══════════════════════════════════════════════════════════════
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build
+        run: mvn -B -ntp clean install -DskipTests
+
+      - name: Integration tests (Testcontainers)
+        run: mvn -B -ntp verify -DskipUTs=false
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: false
+
+      - name: Upload failsafe reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports
+          path: '**/target/failsafe-reports/**'
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 3: Quality Gate (SpotBugs + Checkstyle + OWASP) — manual
+  # ═══════════════════════════════════════════════════════════════
+  quality:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build
+        run: mvn -B -ntp clean install -DskipTests
+
+      - name: SpotBugs + Checkstyle + OWASP
+        run: mvn -B -ntp verify -Pquality
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            **/target/spotbugs*
+            **/target/checkstyle-*
+            **/target/dependency-check-report.html
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 4: PR Comment (Coverage summary)
+  # ═══════════════════════════════════════════════════════════════
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: build-and-test
+
+    steps:
+      - name: Download JaCoCo report
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-reports
+
+      - name: Comment PR with coverage
+        uses: madrapps/jacoco-report@v1.7.1
+        with:
+          paths: |
+            ${{ github.workspace }}/agent-module/target/site/jacoco/jacoco.xml,
+            ${{ github.workspace }}/tenantwall-spring-boot-starter/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 75
+          title: '📊 Coverage Report'
+          update-comment: true

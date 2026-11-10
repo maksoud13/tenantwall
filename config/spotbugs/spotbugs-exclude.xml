@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TenantWall — SpotBugs exclusion filter
+         Use sparingly. Every exclusion should have a documented reason.
+         ═══════════════════════════════════════════════════════════ -->
+
+    <!-- ByteBuddy advice classes: only invoked at runtime via bytecode weaving.
+         SpotBugs can't see the call sites → false positives on unused params/fields. -->
+    <Match>
+        <Class name="~com\.tenantwall\.agent\..*Advice"/>
+    </Match>
+
+    <!-- Premain entry point: invoked by JVM via -javaagent, not by user code. -->
+    <Match>
+        <Class name="com.tenantwall.agent.tenantwallAgent"/>
+    </Match>
+
+    <!-- ByteBuddy generated classes (if shaded/leaked into output) -->
+    <Match>
+        <Package name="~net\.bytebuddy\..*"/>
+    </Match>
+
+    <!-- Test code: noise reduction, tests are already covered by other gates -->
+    <Match>
+        <Class name="~com\.tenantwall\..*Test"/>
+    </Match>
+    <Match>
+        <Class name="~com\.tenantwall\..*IT"/>
+    </Match>
+
+</FindBugsFilter>

@@ -1,5 +1,6 @@
 package com.tenantwall.agent;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -87,7 +88,7 @@ public final class TenantwallConfig {
     }
 
     public static Set<String> getExcludedTables() {
-        return excludedTables;
+        return Set.copyOf(excludedTables);
     }
 
     public static String getParserUrl() {
@@ -234,7 +235,8 @@ public final class TenantwallConfig {
                 p.load(in);
                 System.out.println("[TenantWall] Loaded tenantwall.properties from classpath");
             }
-        } catch (Exception ignore) {
+        } catch (IOException ignore) {
+            // Classpath resource not found or unreadable — proceed with other sources
         }
     }
 
@@ -295,7 +297,6 @@ public final class TenantwallConfig {
 
         insertStrategy = parseInsert(p.getProperty("tenantwall.insert.strategy", insertStrategy.name()));
         // ═══ Tenant Resolution (NEW) ═══
-        tenantStrategy = getStr(p, "tenantwall.tenant.strategy", tenantStrategy);
         tenantHeaderName = getStr(p, "tenantwall.tenant.headerName", tenantHeaderName);
         tenantFixedValue = getStr(p, "tenantwall.tenant.fixedValue", tenantFixedValue);
         tenantSessionKey = getStr(p, "tenantwall.tenant.sessionKey", tenantSessionKey);
