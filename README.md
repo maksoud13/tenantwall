@@ -14,6 +14,7 @@
 [![Databases](https://img.shields.io/badge/databases-3-blue)](./docs/05-support-matrix.md)
 [![Strategies](https://img.shields.io/badge/strategies-5-purple)](./docs/03-the-solution.md#tenant-resolution-strategies-v11)
 [![CI](https://github.com/maksoud13/tenantwall/actions/workflows/ci.yml/badge.svg)](https://github.com/maksoud13/tenantwall/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/maksoud13/tenantwall/graph/badge.svg?token=9765e1cf-a572-4e07-9710-accfde172087)](https://codecov.io/gh/maksoud13/tenantwall)
 
 TenantWall is a Java agent that intercepts every SQL query at the JDBC layer and injects tenant filters — with **zero application code changes**. It works with any framework that uses JDBC (Spring Boot, Quarkus, plain Java) and any database.
 
