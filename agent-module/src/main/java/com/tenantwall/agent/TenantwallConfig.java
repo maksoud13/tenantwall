@@ -429,4 +429,55 @@ public final class TenantwallConfig {
         return s == null || s.isBlank();
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // Tenant Resolution Setters (programmatic config + testability)
+    // ═══════════════════════════════════════════════════════════════
+
+    public static void setTenantStrategy(String v) {
+        tenantStrategy = (v == null) ? "header" : v.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public static void setTenantHeaderName(String v) {
+        tenantHeaderName = v;
+    }
+
+    public static void setTenantFixedValue(String v) {
+        tenantFixedValue = v;
+    }
+
+    public static void setTenantSessionKey(String v) {
+        tenantSessionKey = v;
+    }
+
+    public static void setTenantCookieName(String v) {
+        tenantCookieName = v;
+    }
+
+    public static void setTenantJwtClaim(String v) {
+        tenantJwtClaim = v;
+    }
+
+    public static void setTenantJwtHeader(String v) {
+        tenantJwtHeader = v;
+    }
+
+    public static void setTenantJwtPrefix(String v) {
+        tenantJwtPrefix = v;
+    }
+
+    /**
+     * Resets all tenant resolution config to defaults.
+     * Useful for tests and for reloading configuration.
+     */
+    public static void resetTenantResolution() {
+        tenantStrategy = "header";
+        tenantHeaderName = "X-Tenant-Id";
+        tenantFixedValue = null;
+        tenantSessionKey = "TENANT_ID";
+        tenantCookieName = "tenant_id";
+        tenantJwtClaim = "tenant_id";
+        tenantJwtHeader = "Authorization";
+        tenantJwtPrefix = "Bearer ";
+    }
+
 }

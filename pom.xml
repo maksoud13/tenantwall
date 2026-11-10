@@ -78,8 +78,8 @@
         <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
 
         <!-- Coverage thresholds (fail build if below) -->
-        <jacoco.line.minimum>0.20</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.20</jacoco.branch.minimum>
+        <jacoco.line.minimum>0.25</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.25</jacoco.branch.minimum>
     </properties>
 
     <dependencyManagement>
