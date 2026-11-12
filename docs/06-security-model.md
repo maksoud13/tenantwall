@@ -71,6 +71,28 @@ If no tenant is in context:
 
 ---
 
+## Parser Isolation (v1.2)
+
+The Python parser handles raw SQL (table names, columns). It must **not** be exposed to the network.
+
+### Bind address
+
+| Environment | Recommended bind |
+|-------------|------------------|
+| Local dev | `127.0.0.1:8000` |
+| Docker (same host) | `127.0.0.1:8000` (port mapping) |
+| Docker (compose) | Internal network + no port mapping, or `127.0.0.1:8000` |
+| Kubernetes | `ClusterIP` service, `NetworkPolicy` to limit ingress |
+| Bare metal (multi-host) | Reverse proxy + `TENANTWALL_PARSER_ENFORCE_AUTH=1` + TLS |
+
+### Startup scripts
+
+The shipped `start.sh` and `start.bat` default to `127.0.0.1`. Override with:
+
+```bash
+TENANTWALL_PARSER_BIND_HOST=0.0.0.0 TENANTWALL_PARSER_PORT=8000 ./start.sh
+```
+
 ## Defense in Depth
 
 TenantWall should be **one layer** of your security strategy:

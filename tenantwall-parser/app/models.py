@@ -13,17 +13,17 @@ class ModifyRequest(BaseModel):
     )
 
 
-class ModifyResponse(BaseModel):
-    success: bool
-    result: Optional[str] = None
-    error: Optional[str] = None
-    dialect: Optional[str] = None
-    skipped_tables: Optional[List[str]] = None
-    statement_type: Optional[str] = None    # ← جديد
-
-
 class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
     supported_dialects: list[str]
+    
+class ModifyResponse(BaseModel):
+    success: bool
+    result: Optional[str] = None
+    error: Optional[str] = None
+    reference: Optional[str] = None      # ← NEW: for log correlation
+    dialect: Optional[str] = None
+    skipped_tables: Optional[List[str]] = None
+    statement_type: Optional[str] = None

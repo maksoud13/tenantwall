@@ -4,6 +4,7 @@ from pathlib import Path
 import sqlglot
 
 from app.config import validate_config
+from app.errors import safe_internal_error, safe_value_error
 from app.jwt_auth import require_jwt
 from app.models import ModifyRequest, ModifyResponse, HealthResponse
 from app.modifier import SqlModifier, SUPPORTED_DIALECTS
@@ -14,7 +15,7 @@ validate_config()
 app = FastAPI(
     title="TenantWall Parser",
     description="Parses SQL and injects tenant filters (SELECT, UPDATE, DELETE, INSERT).",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -55,9 +56,11 @@ def modify(req: ModifyRequest, _payload: dict | None = Depends(require_jwt)):
             statement_type=stmt_type,
         )
     except ValueError as e:
-        return ModifyResponse(success=False, error=str(e))
+        msg, ref = safe_value_error(e)
+        return ModifyResponse(success=False, error=msg, reference=ref)
     except Exception as e:
-        return ModifyResponse(success=False, error=f"Unexpected error: {e}")
+        msg, ref = safe_internal_error(e)
+        return ModifyResponse(success=False, error=msg, reference=ref)
 
 
 @app.get("/api/modify-from-file", response_model=ModifyResponse)
@@ -72,12 +75,13 @@ def modify_from_file(
     file_path = base_dir / file
 
     if not file_path.exists():
-        return ModifyResponse(success=False, error=f"File not found: {file_path}")
+        return ModifyResponse(success=False, error=f"File not found: {file}")
 
     try:
         sql = file_path.read_text(encoding="utf-8")
     except Exception as e:
-        return ModifyResponse(success=False, error=f"Failed to read file: {e}")
+        msg, ref = safe_internal_error(e)
+        return ModifyResponse(success=False, error=msg, reference=ref)
 
     excluded_tables = [t.strip() for t in excluded.split(",") if t.strip()]
 
@@ -93,9 +97,11 @@ def modify_from_file(
             statement_type=stmt_type,
         )
     except ValueError as e:
-        return ModifyResponse(success=False, error=str(e))
+        msg, ref = safe_value_error(e)
+        return ModifyResponse(success=False, error=msg, reference=ref)
     except Exception as e:
-        return ModifyResponse(success=False, error=f"Unexpected error: {e}")
+        msg, ref = safe_internal_error(e)
+        return ModifyResponse(success=False, error=msg, reference=ref)
 
 
 def _detect_statement_type(sql: str, dialect: str) -> str:
