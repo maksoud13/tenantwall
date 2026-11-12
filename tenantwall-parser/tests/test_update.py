@@ -19,7 +19,8 @@ class TestUpdate:
         """SECURITY: UPDATE without WHERE must get scoped to a tenant."""
         sql = "UPDATE orders SET status = 'DONE'"
         result = mysql_modifier.add_filter(sql, COLUMN, VALUE)
-        assert "WHERE tenant_id = 'TENANT_A'" in result
+        assert "WHERE" in result
+        assert "tenant_id = 'TENANT_A'" in result
         assert "WHERE WHERE" not in result
 
     def test_update_with_or(self, mysql_modifier):

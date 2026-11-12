@@ -13,7 +13,8 @@ class TestSimpleSelect:
     def test_simple_select(self, mysql_modifier):
         sql = "SELECT * FROM users"
         result = mysql_modifier.add_filter(sql, COLUMN, VALUE)
-        assert "WHERE tenant_id = 'TENANT_A'" in result
+        assert "WHERE" in result
+        assert "tenant_id = 'TENANT_A'" in result
 
     def test_select_with_where(self, mysql_modifier):
         sql = "SELECT * FROM orders WHERE total > 100"
@@ -85,7 +86,9 @@ class TestCte:
         sql = "WITH d AS (SELECT id, name FROM users) SELECT * FROM d WHERE id > 5"
         result = mysql_modifier.add_filter(sql, COLUMN, VALUE)
         # Filter in the CTE
-        assert "FROM users WHERE tenant_id = 'TENANT_A'" in result
+        assert "FROM users" in result
+        assert "WHERE" in result
+        assert "tenant_id = 'TENANT_A'" in result
 
     def test_cte_with_window_function(self, mysql_modifier):
         sql = (

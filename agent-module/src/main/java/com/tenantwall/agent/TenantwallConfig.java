@@ -37,7 +37,10 @@ public final class TenantwallConfig {
     // ═══ Parser ═══
     private static volatile String parserUrl = null;
     private static volatile String dialect = "mysql";
-
+    // ═══ Parser Security (JWT agent↔parser) ═══
+    private static volatile String parserSecret = null;
+    private static volatile int parserTokenTtlSeconds = 60;
+    private static volatile boolean parserEnforceAuth = false;
     // ═══ INSERT ═══
     private static volatile InsertStrategy insertStrategy = InsertStrategy.SKIP;
 
@@ -194,6 +197,30 @@ public final class TenantwallConfig {
         schemas.put(table.toLowerCase(Locale.ROOT), List.copyOf(columns));
     }
 
+    // ═══ Parser Security (JWT agent↔parser) ═══
+    public static String getParserSecret() {
+        return parserSecret;
+    }
+
+    public static void setParserSecret(String v) {
+        parserSecret = v;
+    }
+
+    public static int getParserTokenTtlSeconds() {
+        return parserTokenTtlSeconds;
+    }
+
+    public static void setParserTokenTtlSeconds(int v) {
+        parserTokenTtlSeconds = v;
+    }
+
+    public static boolean isParserEnforceAuth() {
+        return parserEnforceAuth;
+    }
+
+    public static void setParserEnforceAuth(boolean v) {
+        parserEnforceAuth = v;
+    }
     // ═══════════════════════════════════════════════════════════════
     // Initialization (called once from premain)
     // ═══════════════════════════════════════════════════════════════
@@ -294,6 +321,10 @@ public final class TenantwallConfig {
 
         parserUrl = getStr(p, "tenantwall.parser.url", parserUrl);
         dialect = getStr(p, "tenantwall.parser.dialect", dialect);
+        // ═══ Parser Security (JWT agent↔parser) ═══
+        parserSecret = getStr(p, "tenantwall.parser.secret", parserSecret);
+        parserTokenTtlSeconds = getInt(p, "tenantwall.parser.token.ttlSeconds", parserTokenTtlSeconds);
+        parserEnforceAuth = getBool(p, "tenantwall.parser.enforceAuth", parserEnforceAuth);
 
         insertStrategy = parseInsert(p.getProperty("tenantwall.insert.strategy", insertStrategy.name()));
         // ═══ Tenant Resolution (NEW) ═══
@@ -402,6 +433,19 @@ public final class TenantwallConfig {
                     "[TenantWall] Invalid tenantwall.tenant.strategy='" + tenantStrategy + "'. " +
                             "Must be one of: header, fixed, session, cookie, jwt");
         }
+        // ═══ Parser Security (JWT agent↔parser) — independent of tenant.strategy ═══
+        if (parserEnforceAuth) {
+            if (isBlank(parserSecret) || parserSecret.length() < 32) {
+                throw new IllegalStateException(
+                        "[TenantWall] tenantwall.parser.enforceAuth=true requires " +
+                                "tenantwall.parser.secret (min 32 chars)");
+            }
+            if (parserTokenTtlSeconds <= 0 || parserTokenTtlSeconds > 300) {
+                throw new IllegalStateException(
+                        "[TenantWall] tenantwall.parser.token.ttlSeconds must be 1..300 (got "
+                                + parserTokenTtlSeconds + ")");
+            }
+        }
     }
 
     /**
@@ -478,6 +522,17 @@ public final class TenantwallConfig {
         tenantJwtClaim = "tenant_id";
         tenantJwtHeader = "Authorization";
         tenantJwtPrefix = "Bearer ";
+    }
+
+    private static int getInt(Properties p, String k, int def) {
+        String v = p.getProperty(k);
+        if (v == null)
+            return def;
+        try {
+            return Integer.parseInt(v.trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
     }
 
 }

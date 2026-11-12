@@ -40,7 +40,7 @@ public class PythonServiceClient {
     }
 
     public static String modify(String sql, String column, String value, String dialect)
-            throws PythonServiceException {
+            throws PythonServiceException, InterruptedException {
 
         if (!isEnabled()) {
             throw new PythonServiceException(
@@ -50,16 +50,29 @@ public class PythonServiceClient {
         try {
             String jsonBody = buildJsonRequest(sql, column, value, dialect);
 
-            HttpRequest request = HttpRequest.newBuilder()
+            // Build request with optional Authorization
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/api/modify"))
                     .timeout(REQUEST_TIMEOUT)
-                    .header("Content-Type", "application/json")
+                    .header("Content-Type", "application/json");
+
+            if (TenantwallConfig.isParserEnforceAuth()) {
+                String token = JwtSigner.sign(jsonBody);
+                builder.header("Authorization", "Bearer " + token);
+            }
+
+            HttpRequest request = builder
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             HttpResponse<String> response = HTTP_CLIENT.send(
                     request, HttpResponse.BodyHandlers.ofString());
 
+            if (response.statusCode() == 401) {
+                throw new PythonServiceException(
+                        "Python service rejected auth (HTTP 401). "
+                                + "Check tenantwall.parser.secret matches on both sides.");
+            }
             if (response.statusCode() != 200) {
                 throw new PythonServiceException(
                         "Python service returned HTTP " + response.statusCode()
@@ -70,7 +83,7 @@ public class PythonServiceClient {
 
         } catch (PythonServiceException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (IOException e) {
             String detail = e.getMessage();
             if (detail == null) {
                 detail = e.getClass().getSimpleName()
@@ -78,28 +91,6 @@ public class PythonServiceClient {
             }
             throw new PythonServiceException(
                     "Failed to call Python service at " + BASE_URL + ": " + detail, e);
-        }
-    }
-
-    public static boolean isAvailable() {
-        if (!isEnabled())
-            return false;
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/"))
-                    .timeout(Duration.ofSeconds(2))
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(
-                    request, HttpResponse.BodyHandlers.ofString());
-
-            return response.statusCode() == 200;
-        } catch (IOException e) {
-            return false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // preserve interrupt flag
-            return false;
         }
     }
 

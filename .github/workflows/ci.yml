@@ -58,7 +58,23 @@ jobs:
             ./tenantwall-spring-boot-starter/target/site/jacoco/jacoco.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
-
+  python-tests:
+    name: Python Parser Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install deps
+        run: |
+          cd tenantwall-parser
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd tenantwall-parser
+          pytest tests/ -v
   # ═══════════════════════════════════════════════════════════════
   # Job 2: Integration Tests (Testcontainers — MySQL, Postgres)
   # ═══════════════════════════════════════════════════════════════
@@ -156,3 +172,4 @@ jobs:
           min-coverage-changed-files: 75
           title: '📊 Coverage Report'
           update-comment: true
+        
