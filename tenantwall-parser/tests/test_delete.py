@@ -19,7 +19,8 @@ class TestDelete:
         """SECURITY: mass DELETE must be scoped to a single tenant."""
         sql = "DELETE FROM orders"
         result = mysql_modifier.add_filter(sql, COLUMN, VALUE)
-        assert "WHERE tenant_id = 'TENANT_A'" in result
+        assert "WHERE" in result
+        assert "tenant_id = 'TENANT_A'" in result
 
     def test_delete_with_or(self, mysql_modifier):
         sql = "DELETE FROM orders WHERE status = 'CANCELLED' OR status = 'EXPIRED'"

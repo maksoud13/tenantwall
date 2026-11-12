@@ -1,10 +1,15 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import sqlglot
 
+from app.config import validate_config
+from app.jwt_auth import require_jwt
 from app.models import ModifyRequest, ModifyResponse, HealthResponse
 from app.modifier import SqlModifier, SUPPORTED_DIALECTS
+
+# Fail fast on startup if auth is required but misconfigured
+validate_config()
 
 app = FastAPI(
     title="TenantWall Parser",
@@ -25,15 +30,15 @@ def health():
     return HealthResponse(
         status="ok",
         service="TenantWall Parser",
-        version="1.0.0",
+        version="1.1.0",
         supported_dialects=SUPPORTED_DIALECTS,
     )
 
 
 @app.post("/api/modify", response_model=ModifyResponse)
-def modify(req: ModifyRequest):
+def modify(req: ModifyRequest, _payload: dict | None = Depends(require_jwt)):
+    """Modify SQL. Requires JWT if ENFORCE_AUTH is on."""
     try:
-        # Detect statement type (for the response)
         stmt_type = _detect_statement_type(req.sql, req.dialect)
 
         modifier = SqlModifier(

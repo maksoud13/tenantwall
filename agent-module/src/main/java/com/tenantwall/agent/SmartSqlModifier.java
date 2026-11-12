@@ -75,7 +75,13 @@ public class SmartSqlModifier {
     private static String tryPython(String sql, String column, String value) {
         try {
             String dialect = TenantwallConfig.getDialect();
-            String result = PythonServiceClient.modify(sql, column, value, dialect);
+            String result = null;
+			try {
+				result = PythonServiceClient.modify(sql, column, value, dialect);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             System.out.println("[PYTHON] [SmartModifier] Processed by Python service");
             return result;
         } catch (PythonServiceClient.PythonServiceException e) {
