@@ -74,9 +74,9 @@ public class PythonServiceClient {
                                 + "Check tenantwall.parser.secret matches on both sides.");
             }
             if (response.statusCode() != 200) {
+                // Don't include response.body() — it may contain SQL fragments
                 throw new PythonServiceException(
-                        "Python service returned HTTP " + response.statusCode()
-                                + ": " + response.body());
+                        "Python service returned HTTP " + response.statusCode());
             }
 
             return extractResult(response.body());
@@ -150,12 +150,24 @@ public class PythonServiceClient {
         // Check success
         if (json.contains("\"success\":false")) {
             String error = extractJsonString(json, "error");
-            throw new PythonServiceException("Python service error: " + error);
+            String ref = extractJsonString(json, "reference");
+
+            // Error from parser is already sanitized server-side (no SQL).
+            // Add ref for log correlation.
+            StringBuilder msg = new StringBuilder("Python service error");
+            if (ref != null && !ref.isBlank()) {
+                msg.append(" [ref: ").append(ref).append("]");
+            }
+            if (error != null && !error.isBlank()) {
+                msg.append(": ").append(error);
+            }
+            throw new PythonServiceException(msg.toString());
         }
 
         String result = extractJsonString(json, "result");
         if (result == null) {
-            throw new PythonServiceException("No result in Python response: " + json);
+            // Don't include raw JSON — could contain SQL fragments
+            throw new PythonServiceException("No result in Python response");
         }
         return result;
     }
