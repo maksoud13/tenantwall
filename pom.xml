@@ -70,7 +70,7 @@
         <nullaway.version>0.11.0</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
         <owasp-dependency-check.version>10.0.3</owasp-dependency-check.version>
-        <spotbugs.maven.plugin.version>4.8.6.6</spotbugs.maven.plugin.version>
+        <spotbugs.maven.plugin.version>4.8.3.0</spotbugs.maven.plugin.version>
         <!-- Plugin versions -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.0</maven-surefire-plugin.version>
