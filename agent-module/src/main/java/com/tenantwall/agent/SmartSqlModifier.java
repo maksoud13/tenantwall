@@ -35,7 +35,12 @@ public class SmartSqlModifier {
                 || column.isEmpty() || value.isEmpty()) {
             return sql;
         }
-
+        // DDL (CREATE/ALTER/DROP/TRUNCATE/RENAME) must not be rewritten.
+        // Migrations (Flyway, Liquibase, hibernate.hbm2ddl) rely on the
+        // exact schema SQL — injecting tenant_id would break them.
+        if (QueryAnalyzer.isDdl(sql)) {
+            return sql;
+        }
         String cacheKey = sql + "|" + column + "|" + value;
 
         String cached = CACHE.getIfPresent(cacheKey);
@@ -76,12 +81,12 @@ public class SmartSqlModifier {
         try {
             String dialect = TenantwallConfig.getDialect();
             String result = null;
-			try {
-				result = PythonServiceClient.modify(sql, column, value, dialect);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+            try {
+                result = PythonServiceClient.modify(sql, column, value, dialect);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
             System.out.println("[PYTHON] [SmartModifier] Processed by Python service");
             return result;
         } catch (PythonServiceClient.PythonServiceException e) {

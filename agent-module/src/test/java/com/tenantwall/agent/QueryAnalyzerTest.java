@@ -161,4 +161,181 @@ class QueryAnalyzerTest {
         assertThat(QueryAnalyzer.isComplex(
                 "SELECT prownum_id FROM users")).isFalse();
     }
+    // ═══════════════════════════════════════════════════════════════
+    // isDdl — migration bypass (Task 4)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void isDdl_createTable_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "CREATE TABLE products (id INT, name VARCHAR(100))")).isTrue();
+    }
+
+    @Test
+    void isDdl_lowercase_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "create table products (id int)")).isTrue();
+    }
+
+    @Test
+    void isDdl_createIndex_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "CREATE INDEX idx_tenant ON products(tenant_id)")).isTrue();
+    }
+
+    @Test
+    void isDdl_createOrReplace_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "CREATE OR REPLACE VIEW v AS SELECT * FROM products")).isTrue();
+    }
+
+    @Test
+    void isDdl_alterTable_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "ALTER TABLE products ADD COLUMN category_id INT")).isTrue();
+    }
+
+    @Test
+    void isDdl_dropTable_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl("DROP TABLE products")).isTrue();
+    }
+
+    @Test
+    void isDdl_dropIndex_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl("DROP INDEX idx_tenant")).isTrue();
+    }
+
+    @Test
+    void isDdl_truncate_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl("TRUNCATE TABLE products")).isTrue();
+    }
+
+    @Test
+    void isDdl_rename_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl("RENAME TABLE a TO b")).isTrue();
+    }
+
+    @Test
+    void isDdl_leadingLineComment_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "-- Flyway migration V1\nCREATE TABLE products (id INT)")).isTrue();
+    }
+
+    @Test
+    void isDdl_leadingBlockComment_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "/* init schema */ CREATE TABLE products (id INT)")).isTrue();
+    }
+
+    @Test
+    void isDdl_multipleComments_returnsTrue() {
+        assertThat(QueryAnalyzer.isDdl(
+                "-- migration 001\n/* init */\n-- another line\nALTER TABLE t ADD x INT")).isTrue();
+    }
+
+    @Test
+    void isDdl_select_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl("SELECT * FROM products")).isFalse();
+    }
+
+    @Test
+    void isDdl_insert_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl(
+                "INSERT INTO products (name) VALUES ('x')")).isFalse();
+    }
+
+    @Test
+    void isDdl_update_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl(
+                "UPDATE products SET name = 'x' WHERE id = 1")).isFalse();
+    }
+
+    @Test
+    void isDdl_delete_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl(
+                "DELETE FROM products WHERE id = 1")).isFalse();
+    }
+
+    @Test
+    void isDdl_null_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl(null)).isFalse();
+    }
+
+    @Test
+    void isDdl_empty_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl("")).isFalse();
+    }
+
+    @Test
+    void isDdl_blank_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl("   ")).isFalse();
+    }
+
+    @Test
+    void isDdl_onlyComments_returnsFalse() {
+        assertThat(QueryAnalyzer.isDdl("-- just a comment\n/* another */")).isFalse();
+    }
+
+    @Test
+    void isDdl_createdAtColumn_returnsFalse() {
+        // "created_at" — first word is CREATED_AT (with _ breaking) → no match
+        assertThat(QueryAnalyzer.isDdl(
+                "SELECT created_at FROM products")).isFalse();
+    }
+
+    @Test
+    void isDdl_dropRateTable_returnsFalse() {
+        // Table name "drop_rate" — first word is SELECT
+        assertThat(QueryAnalyzer.isDdl(
+                "SELECT * FROM drop_rate")).isFalse();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Helpers (stripLeadingComments, firstWord) — direct tests
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void stripLeadingComments_noComments_returnsAsIs() {
+        assertThat(QueryAnalyzer.stripLeadingComments("SELECT * FROM t"))
+                .isEqualTo("SELECT * FROM t");
+    }
+
+    @Test
+    void stripLeadingComments_lineComment_removed() {
+        assertThat(QueryAnalyzer.stripLeadingComments("-- c\nSELECT * FROM t"))
+                .isEqualTo("SELECT * FROM t");
+    }
+
+    @Test
+    void stripLeadingComments_blockComment_removed() {
+        assertThat(QueryAnalyzer.stripLeadingComments("/* c */ SELECT * FROM t"))
+                .isEqualTo("SELECT * FROM t");
+    }
+
+    @Test
+    void stripLeadingComments_onlyComments_returnsEmpty() {
+        assertThat(QueryAnalyzer.stripLeadingComments("-- c\n/* d */")).isEmpty();
+    }
+
+    @Test
+    void firstWord_simple_returnsFirstWord() {
+        assertThat(QueryAnalyzer.firstWord("SELECT * FROM t")).isEqualTo("SELECT");
+    }
+
+    @Test
+    void firstWord_lowercase_returnsUppercase() {
+        assertThat(QueryAnalyzer.firstWord("create table t"))
+                .isEqualTo("CREATE");
+    }
+
+    @Test
+    void firstWord_startsWithNonLetter_skipsToLetters() {
+        assertThat(QueryAnalyzer.firstWord("   (SELECT ..."))
+                .isEqualTo("SELECT");
+    }
+
+    @Test
+    void firstWord_noLetters_returnsEmpty() {
+        assertThat(QueryAnalyzer.firstWord("123")).isEmpty();
+    }
 }
