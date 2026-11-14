@@ -95,14 +95,30 @@ java -javaagent:"$AgentJar=tenantwall.properties" -jar your-app.jar
 
 The Python parser handles complex SQL (CTEs, window functions, recursive subqueries). If it's not running, TenantWall falls back to local JSqlParser.
 
+Use the shipped startup script (binds to `127.0.0.1` by default):
+
 ```bash
 cd tenantwall/tenantwall-parser
 pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
 
-> [!TIP]
-> Bind to `127.0.0.1` — never `0.0.0.0` in production. The parser sees raw SQL (table names, columns) and must not be exposed to the network.
+# Linux/macOS
+./start.sh
+
+# Windows
+start.bat
+``` 
+> [!IMPORTANT]
+>Never expose the parser to the network. It sees raw SQL (table names, columns). Bind to 127.0.0.1 or an isolated container network.
+>
+>For production:
+>>
+>>TENANTWALL_PARSER_ENFORCE_AUTH=1
+>>
+>>TENANTWALL_PARSER_SECRET=<32+ chars
+>>
+>>Docker: ports: "127.0.0.1:8000:8000" (NOT "8000:8000")
+>>
+>>Reverse proxy (nginx/caddy) with TLS + rate limiting.
 
 **That's it. Zero code. Zero annotations. Zero filters.**
 

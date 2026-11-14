@@ -92,7 +92,65 @@ The shipped `start.sh` and `start.bat` default to `127.0.0.1`. Override with:
 ```bash
 TENANTWALL_PARSER_BIND_HOST=0.0.0.0 TENANTWALL_PARSER_PORT=8000 ./start.sh
 ```
+### Docker
+Inside a container, uvicorn **must** bind to `0.0.0.0` (container localhost is isolated). The security boundary is the **host-side port mapping**.
 
+```yaml
+# CORRECT - host-only access
+ports:
+  - "127.0.0.1:8000:8000"
+
+# WRONG - exposed to every interface on host
+ports:
+  - "8000:8000"
+```
+
+### Kubernetes
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenantwall-parser
+spec:
+  type: ClusterIP          # not NodePort / LoadBalancer
+  ports:
+    - port: 8000
+      targetPort: 8000
+
+```
+
+Use a NetworkPolicy to allow only the agent pods:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tenantwall-parser-allow-agent-only
+spec:
+  podSelector:
+    matchLabels:
+      app: tenantwall-parser
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: your-spring-boot-app
+      ports:
+        - port: 8000
+
+```
+
+### Verification checklist (production)
+
+```
+□ netstat -an | grep 8000 shows 127.0.0.1:8000 only
+□ From another machine: curl http://<host-ip>:8000/ → connection refused
+□ TENANTWALL_PARSER_ENFORCE_AUTH=1
+□ TENANTWALL_PARSER_SECRET set (32+ chars, random)
+□ Reverse proxy in front (nginx/caddy) with TLS
+□ Rate limiting enabled
+```
 ## Defense in Depth
 
 TenantWall should be **one layer** of your security strategy:
