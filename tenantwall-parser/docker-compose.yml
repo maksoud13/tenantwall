@@ -2,12 +2,33 @@ services:
   parser:
     build: .
     container_name: tenantwall-parser
+
+    # ⚠️ Bind to localhost ONLY on the host network.
+    # NEVER use "8000:8000" — it exposes the parser to every interface.
+    # Inside the container, uvicorn listens on 0.0.0.0 (required by Docker),
+    # but the host mapping restricts access to 127.0.0.1.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+
     environment:
       - PYTHONUNBUFFERED=1
+      # Production: set these
+      # - TENANTWALL_PARSER_ENFORCE_AUTH=1
+      # - TENANTWALL_PARSER_SECRET=${TENANTWALL_PARSER_SECRET}
+
     restart: unless-stopped
+
     volumes:
       - ./app:/app/app
       - ./complex.sql:/app/complex.sql
+
+    # Dev only: --reload for hot reload.
+    # Remove in production and use `--workers N` instead.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
