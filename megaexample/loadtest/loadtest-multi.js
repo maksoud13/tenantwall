@@ -21,8 +21,8 @@ export const options = {
 
 const BASE_URL     = __ENV.BASE_URL || 'http://localhost:8080';
 const STRATEGY     = __ENV.STRATEGY || 'header';
-const NUM_TENANTS  = 20;
-const PROD_PER_TEN = 40000;
+const NUM_TENANTS  = 50;
+const PROD_PER_TEN = 250000;
 
 const isolationBroken = new Counter('isolation_broken');
 const crossBlocked    = new Counter('cross_tenant_blocked');

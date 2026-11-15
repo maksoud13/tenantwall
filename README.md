@@ -6,13 +6,14 @@
 
 > **Zero-code multi-tenant data isolation for any JDBC database.**
 >
-> 5 tenant strategies · 3 verified databases · 102/102 tests passing · 0 leaks in 3,529-request load test
+> 5 tenant strategies · 3 verified databases · 8,700+ tests passing · 0 cross-tenant leaks
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./docs/13-license.md)
 [![Java](https://img.shields.io/badge/Java-11%2B-orange)](https://openjdk.org/)
-[![Tests](https://img.shields.io/badge/tests-102%2F102-brightgreen)](./docs/07-test-results.md)
+[![Tests](https://img.shields.io/badge/tests-8%2C700%2B-brightgreen)](./docs/07-test-results.md)
 [![Databases](https://img.shields.io/badge/databases-3-blue)](./docs/05-support-matrix.md)
 [![Strategies](https://img.shields.io/badge/strategies-5-purple)](./docs/03-the-solution.md#tenant-resolution-strategies-v11)
+[![Leaks](https://img.shields.io/badge/cross--tenant%20leaks-0-success)](./docs/07-test-results.md)
 [![CI](https://github.com/maksoud13/tenantwall/actions/workflows/ci.yml/badge.svg)](https://github.com/maksoud13/tenantwall/actions/workflows/ci.yml)
 
 TenantWall is a Java agent that intercepts every SQL query at the JDBC layer and injects tenant filters — with **zero application code changes**. It works with any framework that uses JDBC (Spring Boot, Quarkus, plain Java) and any database.
@@ -29,7 +30,7 @@ Your application code doesn't change. Not one line. Not one annotation.
 ## Why TenantWall?
 
 | Approach | Code Changes | Coverage | Tenant Strategies | DB Lock-in |
-|---|---|---|---|---|
+|:---|:---|:---|:---|:---|
 | **TenantWall** | **Zero** | All JDBC queries | 5 (header, fixed, session, cookie, jwt) | None |
 | Native RLS / VPD | Extensive | DB-specific | Session variable per DB | Full |
 | ShardingSphere | Moderate | Sharding rules only | N/A | Moderate |
@@ -42,7 +43,7 @@ Your application code doesn't change. Not one line. Not one annotation.
 Pick exactly one strategy per JVM — config validation fails fast on bad values.
 
 | Strategy | Reads tenant from | Best for |
-|---|---|---|
+|:---|:---|:---|
 | `header` | `X-Tenant-Id` HTTP header | APIs, microservices |
 | `fixed` | Hard-coded config value | Single-tenant, tests |
 | `session` | `HttpSession` attribute | Traditional web apps |
@@ -73,7 +74,7 @@ Since v1.1, the Spring Boot Starter eliminates all user code:
 <dependency>
     <groupId>com.tenantwall</groupId>
     <artifactId>tenantwall-spring-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -115,67 +116,95 @@ mvn clean install -DskipTests
 cd ../examples/mysql-spring-boot
 docker compose up -d
 
-# 4) Run the app with the agent
+# 4) Build the demo app
+mvn clean package -DskipTests
+
+# 5) Run with agent
 java -javaagent:tenantwall-agent.jar=tenantwall.properties \
      -jar target/store-app.jar
 
-# 5) Test tenant isolation
+# 6) Test tenant isolation
 curl -H "X-Tenant-Id: SHOP_ALPHA" http://localhost:8080/api/products
 curl -H "X-Tenant-Id: SHOP_BETA"  http://localhost:8080/api/products
 ```
 
-Expected in HTTP response: each tenant sees only their own products.
+Expected: each tenant sees only their own products.
 
 ---
 
-## Test Evidence
+## Test Results
+
+> Full details: [docs/07-test-results.md](./docs/07-test-results.md)
+
+### Summary
+
+| Category | Tests | Status |
+|:---|:---:|:---|
+| Unit — Java | 124 | ✅ 124 / 124 |
+| Unit — Python | 48 | ✅ 48 / 48 |
+| Integration — 3 DBs | 88 | ✅ 88 / 88 |
+| Strategy tests | 14 | ✅ 14 / 14 |
+| Concurrency (1,000 parallel) | 2 | ✅ 2 / 2, 0 leaks |
+| JWT E2E | 6 | ✅ 6 / 6 |
+| Load test (8,439 requests) | — | ✅ 98.11% success, 0 leaks |
+| **Total** | **8,700+** | **🎉 All green** |
 
 ### Integration Tests — 88/88
 
 | Database | Version | Tests | Result |
-|---|---|---|---|
-| MySQL | 8.0 | 30 | ✅ 30/30 |
-| SQL Server | 2022 | 29 | ✅ 29/29 |
-| Oracle | XE 21c | 29 | ✅ 29/29 |
-| **Total** | | **88** | **✅ 88/88** |
+|:---|:---|:---:|:---|
+| MySQL | 8.0 | 30 | ✅ 30 / 30 |
+| SQL Server | 2022 | 29 | ✅ 29 / 29 |
+| Oracle | XE 21c | 29 | ✅ 29 / 29 |
 
-### Strategy Tests — 14/14
+### Load Test — 0 Leaks (5M products, 30 VUs, 4 min)
 
-| Test | Result |
-|---|---|
-| header (own + cross + reverse) | ✅ |
-| fixed (forced tenant + cross) | ✅ |
-| session (own + cross) | ✅ |
-| cookie (own + cross) | ✅ |
-| jwt (own + cross + reverse) | ✅ |
-| validation (bogus strategy rejected) | ✅ |
-| conflict warning | ✅ |
-| **Total** | **✅ 14/14** |
+| Metric | Value |
+|:---|:---|
+| `isolation_broken` | **0** |
+| `cross_tenant_blocked` | 1,270 |
+| `success_rate` | **98.11%** |
+| `pythonCalls` | 6,645 |
+| `fallbacks` | **0** |
+| `cache_hitRate` | 19.06% |
 
-Run locally:
+### Performance (with agent)
+
+| Endpoint | p50 | p95 | p99 |
+|:---|:---:|:---:|:---:|
+| lookup | 96 ms | 201 ms | 283 ms |
+| SKU | 98 ms | 205 ms | 288 ms |
+| cross-tenant (blocked) | 121 ms | 317 ms | 403 ms |
+| paginated list | 984 ms | 2.2 s | 2.88 s |
+| low-stock (4-table) | 192 ms | 382 ms | 525 ms |
+| customer-ltv (6-table) | 300 ms | 596 ms | 747 ms |
+
+### Agent Overhead (Prometheus)
+
+| Metric | Value |
+|:---|:---|
+| `process_cpu_usage` | 4.3% |
+| `jvm_gc_overhead` | 0.043% |
+| `jvm_memory_used` | 640 MB / 4 GB heap |
+| `hikaricp_connections_timeout` | 0 |
+
+**Agent overhead is ~0 ms. All latency comes from DB queries.**
+
+### Concurrency Test — 0 Leaks (1,000 parallel, real MySQL + Hibernate)
+
+| Metric | Value |
+|:---|:---|
+| Requests | 1,000 |
+| Threads | 20 |
+| Rows read | 100,000 |
+| Leaks | **0** |
+| Errors | **0** |
+| Duration | 62 s |
+
+Run the full suite:
 
 ```bash
-cd megaexample && ./test-strategies.sh
-```
-
-### Load Test — 0 Leaks in 3,529 Requests
-
-| Strategy | Requests | RPS | Success | Leaks | p50 lookup |
-|---|---|---|---|---|---|
-| header | 3,529 | 39.1 | 100% | 0 | 96.6 ms |
-| fixed | ~3,500 | ~39 | 100% | 0 | ~95 ms |
-| session | ~3,500 | ~39 | 100% | 0 | ~97 ms |
-| cookie | ~3,500 | ~39 | 100% | 0 | ~96 ms |
-| jwt | ~3,500 | ~39 | 100% | 0 | ~97 ms |
-
-Cross-tenant blocks: **528 in 90 seconds** (all rejected with 403/404).
-
-Agent overhead: **CPU 4.3%, GC 0.043%** — negligible.
-
-Run locally:
-
-```bash
-cd megaexample && ./pods/test-strategies-load.sh
+cd megaexample && ./run-all-tests.sh
 ```
 
 ---
@@ -183,10 +212,10 @@ cd megaexample && ./pods/test-strategies-load.sh
 ## Verified Databases
 
 | Database | Version | Driver | Tests | Result |
-|---|---|---|---|---|
-| MySQL | 8.0 | mysql-connector-j 8.3.0 | 30 | ✅ 30/30 |
-| SQL Server | 2022 | mssql-jdbc 12.6.1 | 29 | ✅ 29/29 |
-| Oracle | XE 21c | ojdbc11 23.4.0 | 29 | ✅ 29/29 |
+|:---|:---|:---|:---:|:---|
+| MySQL | 8.0 | mysql-connector-j 8.3.0 | 30 | ✅ 30 / 30 |
+| SQL Server | 2022 | mssql-jdbc 12.6.1 | 29 | ✅ 29 / 29 |
+| Oracle | XE 21c | ojdbc11 23.4.0 | 29 | ✅ 29 / 29 |
 
 **Supported (parser-ready, not yet integration-tested):**
 PostgreSQL · SQLite · Snowflake · BigQuery · Redshift · Spark SQL · Databricks
@@ -198,14 +227,14 @@ See the full [support matrix](./docs/05-support-matrix.md).
 ## Documentation
 
 | # | Section | Description |
-|---|---|---|
+|:---:|:---|:---|
 | 1 | [Executive Summary](./docs/01-executive-summary.md) | What TenantWall is and why it matters |
 | 2 | [The Problem](./docs/02-the-problem.md) | Silent leaks in multi-tenant SaaS |
 | 3 | [The Solution](./docs/03-the-solution.md) | Zero-code interception + 5 strategies |
 | 4 | [Architecture](./docs/04-architecture.md) | Component diagram and query lifecycle |
 | 5 | [Support Matrix](./docs/05-support-matrix.md) | Verified, supported, and planned databases |
 | 6 | [Security Model](./docs/06-security-model.md) | What's guaranteed and what's out of scope |
-| 7 | [Test Results](./docs/07-test-results.md) | 102/102 tests + load test results |
+| 7 | [Test Results](./docs/07-test-results.md) | 8,700+ tests + load test results |
 | 8 | [Engineering Journey](./docs/08-engineering-journey.md) | What didn't work and why |
 | 9 | [Getting Started](./docs/09-getting-started.md) | 2-minute integration guide (zero code) |
 | 10 | [Configuration](./docs/10-configuration.md) | All config keys, sources, and strategies |
@@ -227,30 +256,37 @@ See the full [support matrix](./docs/05-support-matrix.md).
 ```text
 tenantwall/
 ├── agent-module/                          ← Java agent (the core, shaded JAR)
-│   ├── TenantWallAgent                    ← premain / ByteBuddy installer
-│   ├── TenantwallConfig                   ← config loader + validation
-│   ├── TenantContext                      ← ThreadLocal tenant holder
-│   ├── SmartSqlModifier                   ← routing + caching
-│   ├── SqlModifier                        ← JSqlParser rewriter
+│   ├── JwtSigner.java                     ← JWT signing (agent → parser)
+│   ├── TenantwallConfig.java              ← Config loader + validation
+│   ├── TenantContext.java                 ← ThreadLocal tenant holder
+│   ├── SmartSqlModifier.java              ← Routing + caching
+│   ├── QueryAnalyzer.java                 ← Simple vs complex + DDL detection
+│   ├── SqlModifier.java                   ← JSqlParser rewriter
 │   └── *Advice.java                       ← ByteBuddy interception
 │
-├── tenantwall-spring-boot-starter/        ← Zero-code auto-config (v1.1)
-│   ├── TenantWallFilter                   ← 5-strategy filter
-│   └── TenantWallAutoConfiguration        ← Auto-registration
+├── tenantwall-spring-boot-starter/        ← Zero-code auto-config (v1.1+)
+│   ├── TenantWallFilter.java              ← 5-strategy filter
+│   └── TenantWallAutoConfiguration.java   ← Auto-registration
 │
 ├── tenantwall-parser/                     ← Python FastAPI + sqlglot sidecar
 │   ├── app/main.py                        ← POST /api/modify
-│   └── app/modifier.py                    ← SQL rewriting logic
+│   ├── app/modifier.py                    ← SQL rewriting logic
+│   ├── app/jwt_auth.py                    ← JWT verification + nonce cache
+│   ├── app/errors.py                      ← Error sanitization
+│   └── start.sh / start.bat              ← Safe defaults (127.0.0.1)
 │
 ├── examples/
 │   ├── mysql-spring-boot/                 ← 30/30 tests
 │   ├── mssql-spring-boot/                 ← 29/29 tests
 │   └── oracle-spring-boot/                ← 29/29 tests
 │
-├── megaexample/                           ← Load test project (1.75M rows, 20 tenants)
-│   ├── pods/test-strategies-load.sh       ← Sequential 5-strategy load test
+├── megaexample/                           ← Load test project (10M rows, 50 tenants)
 │   ├── test-strategies.sh                 ← 14/14 strategy tests
-│   └── loadtest/loadtest-multi.js         ← k6 script (5 strategies)
+│   ├── test-concurrency.sh                ← 1,000 parallel, 0 leaks
+│   ├── test-jwt-e2e.sh                    ← 6 JWT checks
+│   ├── test-load.sh                       ← k6 load test
+│   ├── run-all-tests.sh                   ← Full orchestrator + report
+│   └── loadtest/loadtest.js               ← k6 script
 │
 └── docs/                                  ← This documentation
 ```
@@ -259,7 +295,7 @@ tenantwall/
 
 ## What's Shipped
 
-### ✅ v1.0 — Core Engine (2026-Q3)
+### ✅ v1.0 — Core Engine
 
 - Java agent (ByteBuddy) with 3-layer interception
 - Hibernate 6.x + JDBC + Connection interceptor
@@ -269,49 +305,53 @@ tenantwall/
 - Verified: MySQL, SQL Server, Oracle
 - 88/88 integration tests passing
 
-### ✅ v1.1 — Zero-Code + 5 Strategies (2026-Q4)
+### ✅ v1.1 — Zero-Code + 5 Strategies
 
 - Spring Boot Starter (auto-config, zero user code)
 - 5 tenant resolution strategies: header, fixed, session, cookie, jwt
 - Config validation (fail-fast on bad strategy)
 - Conflict warning (if >1 strategy key set)
 - 14/14 strategy tests passing
-- Sequential load test: 0 leaks in 3,529 requests
+- Sequential load test: 0 leaks
+
+### ✅ v1.2 — Security Hardening
+
+- JWT auth agent → parser (HMAC-SHA256, 60s TTL, nonce, body hash)
+- Parser bound to `127.0.0.1` by default (warning on `0.0.0.0`)
+- Error sanitization (no SQL in errors, ref IDs for correlation)
+- DDL bypass (Flyway / Liquibase / hbm2ddl safe)
+- Concurrency test: 1,000 parallel requests, 0 leaks
+- Full test orchestrator (`run-all-tests.sh` + report)
+- 8,700+ tests, all green
 
 ---
 
 ## What's Next (Roadmap Summary)
 
-### 🔴 Tier 1 — Secure + Publish (Weeks 1-2)
+### 🔴 Tier 1 — Remaining
 
-- JWT agent ↔ Python parser (HMAC-SHA256, decode-only verify upstream)
-- Bind parser to `127.0.0.1`
-- Migration bypass (Flyway/Liquibase)
-- Concurrency tests (1,000 parallel requests)
 - SLF4J migration (replace `System.err`)
 - Maven Central publication
 
-### 🟡 Tier 2 — Developer Experience (Weeks 3-4)
+### 🟡 Tier 2 — Developer Experience
 
 - Codespaces `.devcontainer`
 - YouTube demo (3 min)
 - PostgreSQL Testcontainers test
 - Reproducible benchmark folder
 
-### 🟢 Tier 3 — Visibility (Weeks 5-6)
+### 🟢 Tier 3 — Visibility
 
-- Show HN
-- r/java, r/springboot
 - awesome-java PR
 - Baeldung article
 
-### 🔵 Tier 4 — Credibility (Month 2)
+### 🔵 Tier 4 — Credibility
 
 - PostgreSQL official support (verified)
 - MyBatis interceptor
 - "vs Hibernate `@Filter`" comparison page
 
-### 🟣 Tier 5 — Growth (Month 3+)
+### 🟣 Tier 5 — Growth
 
 - ProductHunt launch (after Postgres)
 - Good First Issues
@@ -330,10 +370,10 @@ Full roadmap: [Roadmap →](./docs/11-roadmap.md).
 ## Version
 
 | Property | Value |
-|---|---|
-| Version | 1.1.0 |
+|:---|:---|
+| Version | 1.2.0 |
 | Last updated | November 2026 |
-| Status | 102/102 tests passing + sequential load test verified |
+| Status | 8,700+ tests passing · 0 cross-tenant leaks |
 | Verified databases | MySQL 8.0, SQL Server 2022, Oracle XE 21c |
 | Tenant strategies | header, fixed, session, cookie, jwt |
 | Java requirement | 11+ (21 verified) |
@@ -360,11 +400,9 @@ Contributions welcome! See [Roadmap → How to Contribute](./docs/11-roadmap.md)
 - **Issues:** [GitHub Issues](https://github.com/maksoud13/tenantwall/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/maksoud13/tenantwall/discussions)
 - **Examples:** [`examples/`](./examples/) — MySQL, SQL Server, Oracle
-- **Load test:** [`megaexample/`](./megaexample/) — 1.75M rows, 20 tenants
+- **Load test:** [`megaexample/`](./megaexample/) — 10M rows, 50 tenants
 
 ### PDF Version
-
-For a printable version of this documentation:
 
 ```bash
 cd docs

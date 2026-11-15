@@ -1,24 +1,27 @@
-
 #!/bin/bash
-# ============================================================
-# test-load.sh — TenantWall megaexample load test runner
-# ============================================================
+# ═══════════════════════════════════════════════════════════════
+# test-load.sh — k6 load test (baseline + intercepted)
+# ═══════════════════════════════════════════════════════════════
 set -o pipefail
 export MSYS_NO_PATHCONV=1
 
 cd "$(dirname "$0")"
 
-# ─── Paths ───
 WIN_HOME="$(cygpath -w "$HOME" 2>/dev/null || echo "$HOME")"
 AGENT_JAR="${WIN_HOME}/.m2/repository/com/tenantwall/agent-module/1.0.0-SNAPSHOT/agent-module-1.0.0-SNAPSHOT.jar"
 APP_JAR="target/megaexample.jar"
+APP_WIN="$(cygpath -w "$(pwd)/$APP_JAR")"
+CONFIG_WIN="$(cygpath -w "$(pwd)/tenantwall.properties")"
 JS_SCRIPT="loadtest/loadtest.js"
 
-# ─── Config ───
 STAGE_DURATION="${STAGE_DURATION:-3m}"
 VUS="${VUS:-30}"
 WARMUP_DURATION="${WARMUP_DURATION:-30s}"
 BASE_URL="http://localhost:8080"
+
+# IDs from DB (TENANT_001 / TENANT_002)
+ID_T1_OWN=800001
+ID_T2_OWN=900001
 
 SKIP_BASELINE=0
 SKIP_INTERCEPTED=0
@@ -49,9 +52,13 @@ cleanup_port() {
 start_app() {
     local mode="$1" log="$2"
     if [ "$mode" = "intercepted" ]; then
-        java -javaagent:"${AGENT_JAR}=tenantwall.properties" -Xms2g -Xmx4g -jar "$APP_JAR" > "$log" 2>&1 &
+        java -javaagent:"${AGENT_JAR}" \
+             -Dtenantwall.config="${CONFIG_WIN}" \
+             -Dfile.encoding=UTF-8 \
+             -Xms2g -Xmx5g \
+             -jar "$APP_WIN" > "$log" 2>&1 &
     else
-        java -Xms2g -Xmx4g -jar "$APP_JAR" > "$log" 2>&1 &
+        java -Xms2g -Xmx5g -jar "$APP_WIN" > "$log" 2>&1 &
     fi
     echo $!
 }
@@ -75,18 +82,17 @@ stop_app() {
     kill -9 "$pid" 2>/dev/null || true
 }
 
-# ─── Smoke-check all endpoints (called after app is up) ───
 smoke_endpoints() {
     local tenant="TENANT_001"
     local endpoints=(
-        "/api/products/1|200|oltp_lookup"
+        "/api/products/$ID_T1_OWN|200|oltp_lookup"
         "/api/products?page=0&size=20|200|oltp_list"
         "/api/products/by-sku/P-TENANT_001-000000|200|oltp_sku"
         "/api/products/reports/stock-value|200|olap_cte"
         "/api/products/reports/top-categories|200|olap_window"
-        "/api/reports/category-revenue|200|olap_cat_revenue (NEW)"
-        "/api/reports/customer-ltv|200|olap_cust_ltv (NEW)"
-        "/api/reports/low-stock|200|olap_low_stock (NEW)"
+        "/api/reports/category-revenue|200|olap_cat_revenue"
+        "/api/reports/customer-ltv|200|olap_cust_ltv"
+        "/api/reports/low-stock|200|olap_low_stock"
     )
     local pass=0 fail=0
     for entry in "${endpoints[@]}"; do
@@ -106,18 +112,16 @@ smoke_endpoints() {
     [ "$fail" -eq 0 ] && return 0 || return 1
 }
 
-# ─── Verify cross-tenant isolation ───
 verify_isolation() {
     local t1="TENANT_001"
-    local t2_id=40001  # belongs to TENANT_002
     local status
     status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-             -H "X-Tenant-Id: $t1" "${BASE_URL}/api/products/${t2_id}")
+             -H "X-Tenant-Id: $t1" "${BASE_URL}/api/products/${ID_T2_OWN}")
     if [ "$status" = "403" ] || [ "$status" = "404" ]; then
         echo "    [OK] Cross-tenant: $status (isolated)"
         return 0
     elif [ "$status" = "200" ]; then
-        echo "    [X] ISOLATION BROKEN: HTTP 200 — DATA LEAK"
+        echo "    [X] ISOLATION BROKEN: HTTP 200"
         return 1
     else
         echo "    ? Unexpected status: $status"
@@ -136,7 +140,6 @@ run_test() {
     echo "==========================================================="
 
     cleanup_port
-
     step "Starting app ($mode)"
     local log="$outdir/app.log"
     local pid
@@ -151,12 +154,10 @@ run_test() {
     fi
     ok "App is up"
 
-    # Reset BEFORE warmup
     if [ "$mode" = "intercepted" ]; then
         curl -s -X POST "$BASE_URL/api/admin/reset-stats" > /dev/null
     fi
 
-    # ─── Smoke-check all endpoints ───
     step "Smoke-check endpoints"
     if ! smoke_endpoints; then
         err "One or more endpoints failed"
@@ -165,7 +166,6 @@ run_test() {
     fi
     ok "All endpoints reachable"
 
-    # ─── Isolation check ───
     step "Cross-tenant isolation"
     if ! verify_isolation; then
         err "ISOLATION BROKEN — aborting"
@@ -174,29 +174,26 @@ run_test() {
     fi
     ok "Isolation verified"
 
-    # ─── Warmup ───
     step "Warmup ($WARMUP_DURATION)"
     k6 run --quiet --no-summary \
         -e BASE_URL="$BASE_URL" \
-        -e NUM_TENANTS=20 \
-        -e PRODUCTS_PER_TENANT=40000 \
+        -e NUM_TENANTS=50 \
+        -e PRODUCTS_PER_TENANT=100000 \
         --vus 10 --duration "$WARMUP_DURATION" \
         "$JS_SCRIPT" 2>&1 | tail -3 || true
     ok "Warmup done"
 
-    # Reset counters after warmup (keep cache if endpoint exists)
     if [ "$mode" = "intercepted" ]; then
         curl -s -X POST "$BASE_URL/api/admin/reset-counters" > /dev/null 2>&1 \
             || curl -s -X POST "$BASE_URL/api/admin/reset-stats" > /dev/null
-        echo "  Counters reset (post-warmup)"
+        echo "  Counters reset"
     fi
 
-    # ─── Load test ───
     step "Load test ($STAGE_DURATION @ $VUS VUs)"
     k6 run \
         -e BASE_URL="$BASE_URL" \
-        -e NUM_TENANTS=20 \
-        -e PRODUCTS_PER_TENANT=40000 \
+        -e NUM_TENANTS=50 \
+        -e PRODUCTS_PER_TENANT=100000 \
         --out json="$outdir/k6-raw.json" \
         --summary-export "$outdir/k6-summary.json" \
         "$JS_SCRIPT" \
@@ -223,15 +220,14 @@ echo ""
 step "Pre-flight"
 echo "  AGENT_JAR: $AGENT_JAR"
 [ -f "$AGENT_JAR" ] || { err "Agent JAR not found"; exit 1; }
-[ -f "$APP_JAR" ]   || { err "App JAR not found (run: mvn package -DskipTests)"; exit 1; }
+[ -f "$APP_JAR" ]   || { err "App JAR not found"; exit 1; }
 [ -f "$JS_SCRIPT" ] || { err "loadtest/loadtest.js missing"; exit 1; }
 command -v k6 >/dev/null || { err "k6 not installed"; exit 1; }
-docker ps --format '{{.Names}}' 2>/dev/null | grep -q "mega-mysql" || { err "MySQL container down"; exit 1; }
+docker ps --format '{{.Names}}' 2>/dev/null | grep -q "mega-mysql" || { err "MySQL down"; exit 1; }
 ok "All prerequisites met"
 
 rm -rf results/baseline/* results/intercepted/* 2>/dev/null || true
 
-# ─── Run tests ───
 if [ "$SKIP_BASELINE" = "0" ]; then
     run_test "baseline" || exit 1
 fi
@@ -239,19 +235,10 @@ if [ "$SKIP_INTERCEPTED" = "0" ]; then
     run_test "intercepted" || exit 1
 fi
 
-# ─── Summary ───
 echo ""
 echo "==========================================================="
 echo -e "${BOLD}  RESULTS${NC}"
 echo "==========================================================="
-echo ""
-
-if [ -f results/baseline/k6-output.txt ]; then
-    echo -e "  ${BOLD}Baseline (no agent):${NC}"
-    grep -E "own_tenant_ok|cross_tenant_blocked|isolation_broken|http_reqs\." \
-        results/baseline/k6-output.txt | sed 's/^/    /'
-    echo ""
-fi
 
 if [ -f results/intercepted/k6-output.txt ]; then
     echo -e "  ${BOLD}Intercepted (with agent):${NC}"
@@ -259,16 +246,9 @@ if [ -f results/intercepted/k6-output.txt ]; then
         results/intercepted/k6-output.txt | sed 's/^/    /'
     echo ""
 
-    echo -e "  ${BOLD}Per-endpoint latency (intercepted):${NC}"
-    for ep in oltp_lookup oltp_list oltp_sku oltp_cte oltp_sku olap_cte olap_window olap_cat_revenue olap_cust_ltv olap_low_stock; do
+    echo -e "  ${BOLD}Latency:${NC}"
+    for ep in oltp_lookup oltp_list oltp_sku olap_cte olap_window; do
         line=$(grep "latency_${ep}_ms" results/intercepted/k6-output.txt | head -1)
-        [ -n "$line" ] && echo "    $line"
-    done
-    echo ""
-
-    echo -e "  ${BOLD}3 NEW REPORT ENDPOINTS:${NC}"
-    for ep in olap_cat_revenue olap_cust_ltv olap_low_stock; do
-        line=$(grep "http_req_duration{type:${ep}}" results/intercepted/k6-output.txt | head -2 | tail -1)
         [ -n "$line" ] && echo "    $line"
     done
     echo ""
@@ -286,9 +266,8 @@ try:
     print(f'    Fallbacks:      {d.get(\"routing.fallbacks\", 0):,}')
 except Exception as e:
     print(f'    Error: {e}')
-" 2>/dev/null || echo "    (stats file exists but python failed)"
+" 2>/dev/null
     echo ""
 fi
 
 ok "Done"
-echo ""

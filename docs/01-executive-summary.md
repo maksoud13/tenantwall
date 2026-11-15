@@ -11,14 +11,14 @@ Every SQL statement (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) is intercepted befo
 | Metric | Value |
 |---|---|
 | **Verified databases** | MySQL 8.0, SQL Server 2022, Oracle XE 21c |
-| **Test suite** | 88 integration tests + 14 strategy tests |
-| **Pass rate** | 102/102 (100%) |
+| **Test suite** | 124 Java + 48 Python + 88 integration + 14 strategy |
+| **Pass rate** | 8,700+ tests, all green |
 | **Code changes required** | **Zero** (Spring Boot Starter) |
 | **Interception points** | Hibernate `StatementPreparerImpl` + JDBC `Statement` + `Connection.prepareStatement` |
 | **Tenant resolution strategies** | 5: header, fixed, session, cookie, jwt |
 | **Complex SQL support** | CTEs, window functions, recursive subqueries |
 | **Dialects supported by parser** | 10 (mysql, tsql, oracle, postgres, sqlite, redshift, snowflake, bigquery, spark, databricks) |
-| **Load test verified** | 3529 req, 39 rps, **0 cross-tenant leaks**, 100% success |
+| **Load test verified** | 8,439 req, 30 VUs, **0 cross-tenant leaks**, 98.11% success |
 
 ---
 

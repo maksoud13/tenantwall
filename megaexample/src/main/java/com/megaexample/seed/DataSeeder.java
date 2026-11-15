@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 /**
- * Seeds ~1.77M rows across 20 tenants.
+ * Seeds ~1.77M rows across 50 tenants.
  * Run once: mvn spring-boot:run -Dspring-boot.run.profiles=seed
  *
  * Uses raw JDBC (not JPA) for max throughput.
@@ -22,13 +22,13 @@ import java.util.Random;
 @Profile("seed")
 public class DataSeeder implements CommandLineRunner {
 
-    private static final int TENANTS = 20;
-    private static final int PRODUCTS_PER_TENANT = 40_000;
-    private static final int VARIANTS_PER_TENANT = 40_000;
+    private static final int TENANTS = 50;
+    private static final int PRODUCTS_PER_TENANT = 100_000;
+    private static final int VARIANTS_PER_TENANT = 100_000;
     private static final int CUSTOMERS_PER_TENANT = 500;
     private static final int ORDERS_PER_TENANT = 500;
     private static final int ITEMS_PER_ORDER = 3;
-    private static final int BATCH_SIZE = 2000;
+    private static final int BATCH_SIZE = 5000;
 
     private final DataSource dataSource;
     private final Random rnd = new Random(42);

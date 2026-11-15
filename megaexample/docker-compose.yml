@@ -12,13 +12,14 @@ services:
     volumes:
       - mega-mysql-data:/var/lib/mysql
     command:
-      - --innodb-buffer-pool-size=2G
-      - --innodb-log-file-size=512M
+      - --innodb-buffer-pool-size=3G      # was 2G — better for 25M rows
+      - --innodb-log-file-size=1G         # was 512M
       - --innodb-flush-log-at-trx-commit=2
       - --max-connections=300
-      - --innodb-io-capacity=2000
+      - --innodb-io-capacity=4000          # was 2000 — faster seed
       - --innodb-flush-method=O_DIRECT
       - --skip-name-resolve
+      - --innodb-buffer-pool-instances=4   # parallelize buffer
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 5s
@@ -27,11 +28,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '3'
-          memory: 4G
+          cpus: '4'          # was 3 — more for seed
+          memory: 6G         # was 4G — buffer 3G + overhead
         reservations:
           cpus: '2'
-          memory: 2G
+          memory: 3G
 
 volumes:
   mega-mysql-data:

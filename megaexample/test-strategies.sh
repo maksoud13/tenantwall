@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-# TenantWall — verify all 5 tenant strategies + validation
+#  TenantWall — verify all 5 tenant strategies + validation
+#  Post-reseed: 50 tenants × 250K products
+#  TENANT_001: 800001-1050000
+#  TENANT_002: 900001-1300000
 # ═══════════════════════════════════════════════════════════════
 set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 APP="$ROOT/target/megaexample.jar"
+APP_WIN="$(cygpath -w "$APP" 2>/dev/null || echo "$APP")"
 PROPS="$ROOT/tenantwall.properties"
+PROPS_WIN="$(cygpath -w "$PROPS" 2>/dev/null || echo "$PROPS")"
 BACKUP="$ROOT/tenantwall.properties.bak"
 LOG="/tmp/tw-test.log"
 BASE="http://localhost:8080"
 
-# -- locate agent jar in .m2 --
+ID_T1_OWN=800001
+ID_T2_OWN=900001
+
 M2_AGENT="$(cygpath -u "$HOME")/.m2/repository/com/tenantwall/agent-module/1.0.0-SNAPSHOT/agent-module-1.0.0-SNAPSHOT.jar"
 WIN_HOME="$(cygpath -w "$HOME")"
 AGENT_JAR_WIN="${WIN_HOME}\\.m2\\repository\\com\\tenantwall\\agent-module\\1.0.0-SNAPSHOT\\agent-module-1.0.0-SNAPSHOT.jar"
@@ -29,12 +36,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# ─── helpers ───
-
-# base64url encode helper — MUST be at top level (not inside a function)
-_b64url() {
-    openssl base64 -A | tr '+/' '-_' | tr -d '='
-}
+_b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 
 make_jwt() {
     local tenant="$1"
@@ -44,7 +46,6 @@ make_jwt() {
 }
 
 write_props() {
-    # $1 = full tenant section text
     cp "$BACKUP" "$PROPS"
     cat >> "$PROPS" <<EOF
 
@@ -56,9 +57,11 @@ EOF
 start_app() {
     echo "▶ starting app..."
     : > "$LOG"
-    java -javaagent:"${AGENT_JAR_WIN}=tenantwall.properties" \
-         -Xms512m -Xmx1g \
-         -jar "$APP" > "$LOG" 2>&1 &
+    java -javaagent:"${AGENT_JAR_WIN}" \
+         -Dtenantwall.config="${PROPS_WIN}" \
+         -Dfile.encoding=UTF-8 \
+         -Xms1g -Xmx2g \
+         -jar "$APP_WIN" > "$LOG" 2>&1 &
     PID=$!
 
     for i in $(seq 1 40); do
@@ -87,9 +90,20 @@ PASS=0
 FAIL=0
 ok()   { echo "✅ $1"; PASS=$((PASS+1)); }
 bad()  { echo "❌ $1"; FAIL=$((FAIL+1)); }
+
 check_code() {
     local want="$1"; local got="$2"; local label="$3"
     if [[ "$got" == "$want" ]]; then ok "$label ($got)"; else bad "$label (want=$want got=$got)"; fi
+}
+
+# Cross-tenant: 403 OR 404 both valid
+check_blocked() {
+    local got="$1"; local label="$2"
+    if [[ "$got" == "403" || "$got" == "404" ]]; then
+        ok "$label ($got)"
+    else
+        bad "$label (want=403/404 got=$got)"
+    fi
 }
 
 # ─── 1) header ───
@@ -99,9 +113,9 @@ test_header() {
 tenantwall.tenant.headerName=X-Tenant-Id"
     start_app || return
 
-    check_code 200 "$(code -H 'X-Tenant-Id: TENANT_001' $BASE/api/products/1)"       "header: own id=1"
-    check_code 403 "$(code -H 'X-Tenant-Id: TENANT_001' $BASE/api/products/40001)"   "header: cross id=40001"
-    check_code 200 "$(code -H 'X-Tenant-Id: TENANT_002' $BASE/api/products/40001)"   "header: TENANT_002 own id=40001"
+    check_code 200 "$(code -H 'X-Tenant-Id: TENANT_001' $BASE/api/products/$ID_T1_OWN)" "header: TENANT_001 own"
+    check_blocked "$(code -H 'X-Tenant-Id: TENANT_001' $BASE/api/products/$ID_T2_OWN)" "header: cross blocked"
+    check_code 200 "$(code -H 'X-Tenant-Id: TENANT_002' $BASE/api/products/$ID_T2_OWN)" "header: TENANT_002 own"
 
     stop_app
 }
@@ -113,8 +127,8 @@ test_fixed() {
 tenantwall.tenant.fixedValue=TENANT_001"
     start_app || return
 
-    check_code 200 "$(code $BASE/api/products/1)"     "fixed: id=1 (forced TENANT_001)"
-    check_code 403 "$(code $BASE/api/products/40001)" "fixed: id=40001 blocked"
+    check_code 200 "$(code $BASE/api/products/$ID_T1_OWN)" "fixed: id=own"
+    check_blocked "$(code $BASE/api/products/$ID_T2_OWN)" "fixed: id=cross blocked"
 
     stop_app
 }
@@ -126,12 +140,26 @@ test_session() {
 tenantwall.tenant.sessionKey=TENANT_ID"
     start_app || return
 
+    # Wait for session manager readiness
+    sleep 2
+
     local jar="/tmp/tw-cookies.txt"; rm -f "$jar"
 
-    curl -s -c "$jar" -X POST $BASE/api/admin/session/TENANT_001 > /dev/null
+    local session_resp
+    session_resp=$(curl -s -c "$jar" -X POST $BASE/api/admin/session/TENANT_001)
 
-    check_code 200 "$(code -b "$jar" $BASE/api/products/1)"     "session: own id=1"
-    check_code 403 "$(code -b "$jar" $BASE/api/products/40001)" "session: cross id=40001"
+    if ! grep -q "JSESSIONID" "$jar" 2>/dev/null; then
+        bad "session: cookie NOT saved (create failed: $session_resp)"
+        rm -f "$jar"
+        stop_app
+        return
+    fi
+
+    echo "  Session ID: $(grep JSESSIONID "$jar" | awk '{print $NF}')"
+    sleep 1
+
+    check_code 200 "$(code -b "$jar" $BASE/api/products/$ID_T1_OWN)" "session: own"
+    check_blocked "$(code -b "$jar" $BASE/api/products/$ID_T2_OWN)" "session: cross blocked"
 
     rm -f "$jar"
     stop_app
@@ -144,8 +172,8 @@ test_cookie() {
 tenantwall.tenant.cookieName=tenant_id"
     start_app || return
 
-    check_code 200 "$(code --cookie 'tenant_id=TENANT_001' $BASE/api/products/1)"     "cookie: own id=1"
-    check_code 403 "$(code --cookie 'tenant_id=TENANT_001' $BASE/api/products/40001)" "cookie: cross id=40001"
+    check_code 200 "$(code --cookie 'tenant_id=TENANT_001' $BASE/api/products/$ID_T1_OWN)" "cookie: own"
+    check_blocked "$(code --cookie 'tenant_id=TENANT_001' $BASE/api/products/$ID_T2_OWN)" "cookie: cross blocked"
 
     stop_app
 }
@@ -163,19 +191,21 @@ tenantwall.tenant.jwtPrefix=Bearer "
     t1="$(make_jwt TENANT_001)"
     t2="$(make_jwt TENANT_002)"
 
-    check_code 200 "$(code -H "Authorization: Bearer $t1" $BASE/api/products/1)"     "jwt: TENANT_001 → id=1"
-    check_code 403 "$(code -H "Authorization: Bearer $t1" $BASE/api/products/40001)" "jwt: TENANT_001 → cross"
-    check_code 200 "$(code -H "Authorization: Bearer $t2" $BASE/api/products/40001)" "jwt: TENANT_002 → id=40001"
+    check_code 200 "$(code -H "Authorization: Bearer $t1" $BASE/api/products/$ID_T1_OWN)" "jwt: TENANT_001 own"
+    check_blocked "$(code -H "Authorization: Bearer $t1" $BASE/api/products/$ID_T2_OWN)" "jwt: cross blocked"
+    check_code 200 "$(code -H "Authorization: Bearer $t2" $BASE/api/products/$ID_T2_OWN)" "jwt: TENANT_002 own"
 
     stop_app
 }
 
-# ─── 6) validation: bad strategy → must fail fast ───
+# ─── 6) validation ───
 test_validation_bad() {
     echo; echo "════ 6) validation: unknown strategy ════"
     write_props "tenantwall.tenant.strategy=bogus"
     : > "$LOG"
-    java -javaagent:"${AGENT_JAR_WIN}=tenantwall.properties" -jar "$APP" > "$LOG" 2>&1 &
+    java -javaagent:"${AGENT_JAR_WIN}" \
+         -Dtenantwall.config="${PROPS_WIN}" \
+         -jar "$APP_WIN" > "$LOG" 2>&1 &
     PID=$!
 
     local died=0
@@ -194,7 +224,7 @@ test_validation_bad() {
     stop_app
 }
 
-# ─── 7) conflict: header + cookie keys both set → warning only ───
+# ─── 7) conflict ───
 test_conflict_warning() {
     echo; echo "════ 7) conflict: extra strategy keys → warning ════"
     write_props "tenantwall.tenant.strategy=header
@@ -204,14 +234,13 @@ tenantwall.tenant.sessionKey=TENANT_ID"
     start_app || return
 
     if grep -q "WARNING: strategy=header but tenantwall.tenant.cookieName\|WARNING: strategy=header but tenantwall.tenant.sessionKey" "$LOG"; then
-        ok "conflict: warning printed for non-selected strategies"
+        ok "conflict: warning printed"
     else
-        bad "conflict: no warning in log"
+        bad "conflict: no warning"
     fi
     stop_app
 }
 
-# ═══ run all ═══
 test_header
 test_fixed
 test_session

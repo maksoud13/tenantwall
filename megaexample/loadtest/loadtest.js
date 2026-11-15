@@ -22,8 +22,8 @@ export const options = {
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-const NUM_TENANTS = parseInt(__ENV.NUM_TENANTS || '20');
-const PRODUCTS_PER_TENANT = parseInt(__ENV.PRODUCTS_PER_TENANT || '40000');
+const NUM_TENANTS = parseInt(__ENV.NUM_TENANTS || '50');
+const PRODUCTS_PER_TENANT = parseInt(__ENV.PRODUCTS_PER_TENANT || '100000');
 
 // ═══ Metrics ═══
 const isolationBroken = new Counter('isolation_broken');
@@ -52,9 +52,11 @@ function tenantHeader(num) {
   return `TENANT_${String(num).padStart(3, '0')}`;
 }
 
+const ID_BASE = 800001;  // TENANT_001 starts at 800001 (from DB after reseed)
+
 function productIdForTenant(tenantNum) {
-  const base = (tenantNum - 1) * PRODUCTS_PER_TENANT;
-  return base + Math.floor(Math.random() * PRODUCTS_PER_TENANT) + 1;
+  const base = ID_BASE + (tenantNum - 1) * PRODUCTS_PER_TENANT;
+  return base + Math.floor(Math.random() * PRODUCTS_PER_TENANT);
 }
 
 function nonExistentId() {
@@ -146,11 +148,11 @@ export default function () {
   // ─────────────────────────────────────────────────────────────
   //  5%: CTE report
   // ─────────────────────────────────────────────────────────────
-  if (r < 0.84) {
+  if (r < 0.82) {
     const res = http.get(`${BASE_URL}/api/products/reports/stock-value`, {
       headers,
       tags: { type: 'olap_cte' },
-      timeout: '15s',
+      timeout: '20s',
     });
     successRate.add(res.status === 200 ? 1 : 0);
     if (res.status >= 500) serverErrors5xx.add(1);
@@ -161,11 +163,11 @@ export default function () {
   // ─────────────────────────────────────────────────────────────
   //  5%: Window function
   // ─────────────────────────────────────────────────────────────
-  if (r < 0.89) {
+  if (r < 0.85) {
     const res = http.get(`${BASE_URL}/api/products/reports/top-categories`, {
       headers,
       tags: { type: 'olap_window' },
-      timeout: '15s',
+      timeout: '20s',
     });
     successRate.add(res.status === 200 ? 1 : 0);
     if (res.status >= 500) serverErrors5xx.add(1);
@@ -180,7 +182,7 @@ export default function () {
     const res = http.get(`${BASE_URL}/api/reports/category-revenue`, {
       headers,
       tags: { type: 'olap_cat_revenue' },
-      timeout: '15s',
+      timeout: '20s',
     });
     successRate.add(res.status === 200 ? 1 : 0);
     if (res.status >= 500) serverErrors5xx.add(1);
@@ -195,7 +197,7 @@ export default function () {
     const res = http.get(`${BASE_URL}/api/reports/customer-ltv`, {
       headers,
       tags: { type: 'olap_cust_ltv' },
-      timeout: '15s',
+      timeout: '20s',
     });
     successRate.add(res.status === 200 ? 1 : 0);
     if (res.status >= 500) serverErrors5xx.add(1);
@@ -210,7 +212,7 @@ export default function () {
     const res = http.get(`${BASE_URL}/api/reports/low-stock`, {
       headers,
       tags: { type: 'olap_low_stock' },
-      timeout: '15s',
+      timeout: '20s',
     });
     successRate.add(res.status === 200 ? 1 : 0);
     if (res.status >= 500) serverErrors5xx.add(1);
