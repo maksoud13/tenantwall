@@ -5,12 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.tenantwall</groupId>
-        <artifactId>tenantwall</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <groupId>io.github.maksoud13</groupId>
+        <artifactId>tenantwall-parent</artifactId>
+        <version>1.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-
+    <name>TenantWall Agent</name>
+     <description>Java agent for zero-code multi-tenant data isolation at JDBC layer</description>
     <artifactId>agent-module</artifactId>
     <packaging>jar</packaging>
     <properties>
@@ -173,7 +174,7 @@
                             <!-- السطر السحري: بيقول للـ JVM مين الـ Agent الأساسي -->
                             <!-- ملاحظة: يُفضل تسمية الكلاس بحرف كبير مثل TenantwallAgent حسب
                             اتفاقية Java -->
-                            <Premain-Class>com.tenantwall.agent.tenantwallAgent</Premain-Class>
+                            <Premain-Class>io.github.maksoud13.agent.tenantwallAgent</Premain-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>
@@ -205,7 +206,7 @@
                             <relocations>
                                 <relocation>
                                     <pattern>net.sf.jsqlparser</pattern>
-                                    <shadedPattern>com.tenantwall.shaded.jsqlparser</shadedPattern>
+                                    <shadedPattern>io.github.maksoud13.shaded.jsqlparser</shadedPattern>
                                 </relocation>
                             </relocations>
 
@@ -213,7 +214,7 @@
                                 <transformer
                                     implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Premain-Class>com.tenantwall.agent.tenantwallAgent</Premain-Class>
+                                        <Premain-Class>io.github.maksoud13.agent.tenantwallAgent</Premain-Class>
                                         <Can-Redefine-Classes>true</Can-Redefine-Classes>
                                         <Can-Retransform-Classes>true</Can-Retransform-Classes>
                                     </manifestEntries>
