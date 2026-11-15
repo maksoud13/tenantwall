@@ -8,7 +8,7 @@
         <version>3.3.5</version>
     </parent>
     
-    <groupId>com.tenantwall</groupId>
+    <groupId>io.github.maksoud13</groupId>
     <artifactId>tenantwall-demo-api</artifactId>
     <version>1.0.0</version>
     

@@ -9,11 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tests for {@link TenantWallAutoConfiguration}.
  *
- * <p>Uses {@link WebApplicationContextRunner} (SERVLET type) — required because
+ * <p>
+ * Uses {@link WebApplicationContextRunner} (SERVLET type) — required because
  * {@link TenantWallAutoConfiguration} is guarded by
  * {@code @ConditionalOnWebApplication(type = SERVLET)}.
  *
- * <p>The default {@link org.springframework.boot.test.context.runner.ApplicationContextRunner}
+ * <p>
+ * The default
+ * {@link org.springframework.boot.test.context.runner.ApplicationContextRunner}
  * creates a {@code WebApplicationType.NONE} context, where the condition would
  * fail and the bean would never be registered.
  */

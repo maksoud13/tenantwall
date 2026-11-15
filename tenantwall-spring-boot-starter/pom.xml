@@ -5,21 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.tenantwall</groupId>
-        <artifactId>tenantwall</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <groupId>io.github.maksoud13</groupId>
+        <artifactId>tenantwall-parent</artifactId>
+        <version>1.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+
 
     <artifactId>tenantwall-spring-boot-starter</artifactId>
     <packaging>jar</packaging>
     <name>TenantWall Spring Boot Starter</name>
-    <description>Zero-code Spring Boot auto-configuration for TenantWall</description>
+    <description>Spring Boot auto-configuration for TenantWall</description>
+
 
     <dependencies>
         <!-- ═══ TenantWall Core (agent) — provided (loaded via -javaagent) ═══ -->
         <dependency>
-            <groupId>com.tenantwall</groupId>
+            <groupId>io.github.maksoud13</groupId>
             <artifactId>agent-module</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
@@ -113,6 +115,11 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.16</version>
         </dependency>
     </dependencies>
 

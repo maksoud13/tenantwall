@@ -14,7 +14,7 @@
 
     <!-- Premain entry point: invoked by JVM via -javaagent, not by user code. -->
     <Match>
-        <Class name="com.tenantwall.agent.tenantwallAgent"/>
+        <Class name="io.github.maksoud13.agent.tenantwallAgent"/>
     </Match>
 
     <!-- ByteBuddy generated classes (if shaded/leaked into output) -->

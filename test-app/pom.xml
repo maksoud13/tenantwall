@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.tenantwall</groupId>
+        <groupId>io.github.maksoud13</groupId>
         <artifactId>tenantwall</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -47,7 +47,7 @@
 
         <!-- الـ Agent: compile-time فقط، الـ runtime ييجي من -javaagent -->
         <dependency>
-            <groupId>com.tenantwall</groupId>
+            <groupId>io.github.maksoud13</groupId>
             <artifactId>agent-module</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
