@@ -29,5 +29,9 @@
     <Match>
         <Class name="~com\.tenantwall\..*IT"/>
     </Match>
-
+    <!-- Ignore naming convention for the agent entry point (Premain-Class) -->
+    <Match>
+        <Class name="com.tenantwall.agent.tenantwallAgent"/>
+        <Bug pattern="NM_CLASS_NAMING_CONVENTION"/>
+    </Match>
 </FindBugsFilter>
