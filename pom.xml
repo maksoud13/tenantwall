@@ -60,7 +60,7 @@
         <hibernate.version>6.5.3.Final</hibernate.version>
         <slf4j.version>2.0.16</slf4j.version>
 
-        <!-- Testing versions -->
+        <!-- Testing -->
         <junit.version>5.11.0</junit.version>
         <mockito.version>5.12.0</mockito.version>
         <assertj.version>3.26.0</assertj.version>
@@ -69,20 +69,19 @@
         <wiremock.version>3.10.0</wiremock.version>
         <jqwik.version>1.9.0</jqwik.version>
 
-        <!-- Quality tooling -->
+        <!-- Quality -->
         <jacoco.version>0.8.12</jacoco.version>
         <spotbugs.version>4.8.6</spotbugs.version>
         <checkstyle.version>10.17.0</checkstyle.version>
         <jspecify.version>1.0.0</jspecify.version>
         <spotbugs.maven.plugin.version>4.8.3.0</spotbugs.maven.plugin.version>
 
-        <!-- Plugin versions -->
+        <!-- Plugins -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.0</maven-surefire-plugin.version>
         <maven-failsafe-plugin.version>3.5.0</maven-failsafe-plugin.version>
-        <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
 
-        <!-- Coverage thresholds -->
+        <!-- Coverage -->
         <jacoco.line.minimum>0.40</jacoco.line.minimum>
         <jacoco.branch.minimum>0.40</jacoco.branch.minimum>
     </properties>
@@ -97,7 +96,6 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Explicit SLF4J for Maven Central validation -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
@@ -161,7 +159,7 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- Quality tooling -->
+            <!-- Quality -->
             <dependency>
                 <groupId>org.jspecify</groupId>
                 <artifactId>jspecify</artifactId>
@@ -325,13 +323,26 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- ⚠️ هذه البلوك مهم جداً عشان يشغل JaCoCo والـ Tests -->
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 
     <profiles>
-        <!-- ═══════════════════════════════════════════════════════════════
-             Quality Profile — SpotBugs + Checkstyle
-             Run with: mvn verify -Pquality
-             ═══════════════════════════════════════════════════════════════ -->
+        <!-- Quality Profile -->
         <profile>
             <id>quality</id>
             <build>
@@ -362,10 +373,7 @@
             </build>
         </profile>
 
-        <!-- ═══════════════════════════════════════════════════════════════
-             Release Profile — GPG, Sources, Javadoc, Central Publishing
-             Run with: mvn deploy -Prelease
-             ═══════════════════════════════════════════════════════════════ -->
+        <!-- Release Profile (GPG + Central) -->
         <profile>
             <id>release</id>
             <build>
