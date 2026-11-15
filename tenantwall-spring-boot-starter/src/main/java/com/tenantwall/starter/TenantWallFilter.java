@@ -2,6 +2,7 @@ package com.tenantwall.starter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tenantwall.agent.LogTags;
 import com.tenantwall.agent.TenantContext;
 import com.tenantwall.agent.TenantwallConfig;
 import jakarta.servlet.Filter;
@@ -12,6 +13,8 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,11 +39,11 @@ import java.util.Base64;
  * <p>
  * <b>JWT note:</b> For {@code strategy=jwt}, this filter <em>decodes</em> the
  * JWT payload but does <em>not</em> verify the signature. Signature
- * verification
- * is expected to happen upstream (API gateway, Spring Security, etc.).
+ * verification is expected to happen upstream (API gateway, Spring Security).
  */
 public class TenantWallFilter implements Filter {
 
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Override
@@ -121,7 +124,9 @@ public class TenantWallFilter implements Filter {
             JsonNode claim = payload.get(TenantwallConfig.getTenantJwtClaim());
             return (claim == null || claim.isNull()) ? null : claim.asText();
         } catch (Exception e) {
-            System.err.println("[TenantWall] JWT decode failed: " + e.getMessage());
+            // Malformed/expired JWT — expected client-side errors, not bugs.
+            // debug level: this fires on every bad auth attempt (noise in prod).
+            log.debug("{} JWT decode failed: {}", LogTags.AGENT, e.getMessage());
             return null;
         }
     }

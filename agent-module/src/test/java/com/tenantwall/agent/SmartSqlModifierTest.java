@@ -189,4 +189,35 @@ class SmartSqlModifierTest {
     void getCacheStats_returnsNonNull() {
         assertThat(SmartSqlModifier.getCacheStats()).isNotNull();
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DDL bypass (Task 4) — migrations must not be rewritten
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void ddl_createTable_returnedUnchanged_notCounted() {
+        String sql = "CREATE TABLE products (id INT, name VARCHAR(100))";
+        long before = SmartSqlModifier.getLocalCallCount()
+                + SmartSqlModifier.getPythonCallCount();
+
+        String result = SmartSqlModifier.modify(sql, "tenant_id", "T1");
+
+        assertThat(result).isEqualTo(sql);
+        assertThat(SmartSqlModifier.getLocalCallCount()
+                + SmartSqlModifier.getPythonCallCount()).isEqualTo(before);
+    }
+
+    @Test
+    void ddl_withLeadingComment_notModified() {
+        String sql = "-- migration V1\nCREATE TABLE products (id INT)";
+        String result = SmartSqlModifier.modify(sql, "tenant_id", "T1");
+        assertThat(result).isEqualTo(sql);
+    }
+
+    @Test
+    void nonDdl_stillModified() {
+        String result = SmartSqlModifier.modify(
+                "SELECT * FROM products", "tenant_id", "T1");
+        assertThat(result).contains("tenant_id");
+    }
 }

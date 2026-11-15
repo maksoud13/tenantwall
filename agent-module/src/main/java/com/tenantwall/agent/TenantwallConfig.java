@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Central configuration for the TenantWall agent.
  *
@@ -26,7 +29,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * at runtime (e.g., blue/green parser URL changes).
  */
 public final class TenantwallConfig {
-
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
     // ═══ Filter ═══
     private static volatile boolean enabled = true;
     private static volatile String filterColumn = "tenant_id";
@@ -181,8 +184,7 @@ public final class TenantwallConfig {
 
     public static void setParserUrl(String v) {
         parserUrl = v;
-        System.out.println("[TenantWall] Parser URL set to: "
-                + (v == null ? "DISABLED" : v));
+        log.info("Parser URL set to: {}", v == null ? "DISABLED" : v);
     }
 
     public static void setDialect(String v) {
@@ -247,10 +249,13 @@ public final class TenantwallConfig {
         validate();
         warnConflictingStrategies(merged);
 
-        System.out.println("[TenantWall] Config: enabled=" + enabled
-                + ", column=" + filterColumn
-                + ", parser=" + (isParserEnabled() ? parserUrl : "disabled")
-                + ", excluded=" + excludedTables);
+        log.info("Config: enabled={}, column={}, parser={}, enforceAuth={}, secretSet={}, excluded={}",
+                enabled,
+                filterColumn,
+                isParserEnabled() ? parserUrl : "disabled",
+                parserEnforceAuth,
+                parserSecret != null && !parserSecret.isBlank(),
+                excludedTables);
     }
 
     // ─── Sources ───
@@ -260,7 +265,7 @@ public final class TenantwallConfig {
                 .getResourceAsStream("tenantwall.properties")) {
             if (in != null) {
                 p.load(in);
-                System.out.println("[TenantWall] Loaded tenantwall.properties from classpath");
+                log.info("Loaded tenantwall.properties from classpath");
             }
         } catch (IOException ignore) {
             // Classpath resource not found or unreadable — proceed with other sources
@@ -304,9 +309,9 @@ public final class TenantwallConfig {
 
         try (InputStream in = Files.newInputStream(Path.of(path))) {
             p.load(in);
-            System.out.println("[TenantWall] Loaded config file: " + path);
+            log.info("Loaded config file: {}", path);
         } catch (Exception e) {
-            System.err.println("[TenantWall] Cannot load config file " + path + ": " + e.getMessage());
+            log.error("Cannot load config file: {}", path, e);
         }
     }
 
@@ -462,9 +467,8 @@ public final class TenantwallConfig {
                 "jwt", "tenantwall.tenant.jwtClaim");
         for (Map.Entry<String, String> e : keys.entrySet()) {
             if (!e.getKey().equals(active) && p.getProperty(e.getValue()) != null) {
-                System.err.println("[TenantWall] WARNING: strategy=" + active
-                        + " but " + e.getValue() + " is also set (ignored). "
-                        + "Pick only one strategy.");
+                log.warn("strategy={} but {} is also set (ignored). Pick only one strategy.",
+                        active, e.getValue());
             }
         }
     }

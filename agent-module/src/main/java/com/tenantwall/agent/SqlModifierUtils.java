@@ -13,6 +13,9 @@ import net.sf.jsqlparser.statement.select.*;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Shared utilities for all SQL handlers.
  *
@@ -26,7 +29,7 @@ import java.util.List;
  * </ul>
  */
 public class SqlModifierUtils {
-
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
     // ═══════════════════════════════════════════════════════════════
     // 1. Filter condition
     // ═══════════════════════════════════════════════════════════════
@@ -175,7 +178,7 @@ public class SqlModifierUtils {
             ParenthesedSelect ps = (ParenthesedSelect) expr;
             Select subSelect = ps.getSelect();
             if (subSelect != null) {
-                System.out.println("[INFO] [Utils] Found Subquery (ParenthesedSelect)");
+                log.debug("{} Found subquery (ParenthesedSelect)", LogTags.SQL);
                 SelectHandler.handle(subSelect, column, value);
             }
             return;
@@ -186,7 +189,7 @@ public class SqlModifierUtils {
             LateralSubSelect lss = (LateralSubSelect) expr;
             Select subSelect = lss.getSelect();
             if (subSelect != null) {
-                System.out.println("[INFO] [Utils] Found Lateral Subquery");
+                log.debug("{} Found lateral subquery", LogTags.SQL);
                 SelectHandler.handle(subSelect, column, value);
             }
             return;

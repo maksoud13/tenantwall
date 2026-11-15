@@ -1,8 +1,12 @@
 package com.tenantwall.agent;
 
 import org.hibernate.resource.jdbc.spi.StatementInspector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TenantWallStatementInspector implements StatementInspector {
+
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     @Override
     public String inspect(String sql) {
@@ -12,18 +16,19 @@ public class TenantWallStatementInspector implements StatementInspector {
                 return sql;
             }
 
-            // [SQL] استخدم SmartSqlModifier (نفس اللي الـ Agent بيستخدمه)
             String modified = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
-            
+
             if (!modified.equals(sql)) {
-                System.out.println("[SQL] [HibernateInspector] Modified: " + modified);
+                log.debug("{} Modified (Inspector layer)", LogTags.HIBERNATE);
             }
-            
+
             return modified;
 
         } catch (Exception e) {
-            System.err.println("[WARN] [HibernateInspector] Error: " + e.getMessage());
-            return sql; // fallback: original SQL
+            // Fail-open: return original SQL on unexpected error.
+            // This is a security-relevant fallback — visible warning + stack trace.
+            log.warn("{} Unexpected error — returning original SQL", LogTags.HIBERNATE, e);
+            return sql;
         }
     }
 }

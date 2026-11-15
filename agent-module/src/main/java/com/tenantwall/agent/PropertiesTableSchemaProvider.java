@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Resolves table schemas from configuration. No DB access.
  *
@@ -20,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ol>
  */
 public class PropertiesTableSchemaProvider implements TableSchemaProvider {
-
+ private static final Logger log = LoggerFactory.getLogger("TenantWall");
     private final Map<String, List<String>> schemas = new ConcurrentHashMap<>();
 
     public PropertiesTableSchemaProvider() {
@@ -65,7 +68,7 @@ public class PropertiesTableSchemaProvider implements TableSchemaProvider {
         try (InputStream in = Files.newInputStream(Path.of(path))) {
             loadProps(in);
         } catch (Exception e) {
-            System.err.println("[WARN]️ [TenantWall] Cannot load schema file " + path + ": " + e.getMessage());
+             log.warn("Cannot load schema file: {}", path, e);
         }
     }
 

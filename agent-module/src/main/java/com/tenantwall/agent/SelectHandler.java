@@ -3,6 +3,8 @@ package com.tenantwall.agent;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.*;
 import net.sf.jsqlparser.schema.Table;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.Set;
  * </ul>
  */
 public class SelectHandler {
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     public static String handle(Select select, String column, String value) {
         // ─── NEW: excluded tables check ───
@@ -41,7 +44,7 @@ public class SelectHandler {
                 return false; // at least one non-excluded table → filter
             }
         }
-        System.out.println("[SKIP] [SelectHandler] All tables excluded, skipping: " + tables);
+        log.debug("{} All tables excluded, skipping: {}", LogTags.SELECT, tables);
         return true;
     }
 
@@ -57,8 +60,7 @@ public class SelectHandler {
                 process(inner, column, value);
             }
         } else {
-            System.out.println("[WARN] [SelectHandler] Unsupported Select type: "
-                    + select.getClass().getSimpleName());
+            log.warn("{} Unsupported Select type: {}", LogTags.SELECT, select.getClass().getSimpleName());
         }
     }
 
@@ -73,7 +75,7 @@ public class SelectHandler {
 
         // 2. WHERE — مع alias
         if (SqlModifierUtils.alreadyHasFilter(plainSelect.getWhere(), column)) {
-            System.out.println("[OK] [SelectHandler] Filter already exists, skipping WHERE");
+            log.debug("{} Filter already exists, skipping WHERE", LogTags.SELECT);
         } else {
             Expression newWhere = SqlModifierUtils.addFilterToWhere(
                     plainSelect.getWhere(), column, value, fromAlias); // ← alias
@@ -137,7 +139,7 @@ public class SelectHandler {
         }
         for (WithItem item : withItems) {
             if (item.getSelect() != null) {
-                System.out.println("[INFO] [SelectHandler] Processing CTE: " + item.getAlias());
+                log.debug("{} Processing CTE: {}", LogTags.SELECT, item.getAlias());
                 process(item.getSelect(), column, value);
             }
         }

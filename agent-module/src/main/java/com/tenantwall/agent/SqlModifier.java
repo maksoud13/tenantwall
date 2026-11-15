@@ -7,16 +7,17 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.update.Update;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.StringReader;
 
 /**
  * Main entry point for SQL modification.
  *
- * Routes each statement type to its dedicated handler:
+ * <p>Routes each statement type to its dedicated handler:
  * <ul>
- * <li>{@link SelectHandler} → SELECT queries (with JOIN, UNION,
- * subqueries)</li>
+ * <li>{@link SelectHandler} → SELECT queries (with JOIN, UNION, subqueries)</li>
  * <li>{@link UpdateHandler} → UPDATE statements</li>
  * <li>{@link DeleteHandler} → DELETE statements</li>
  * <li>{@link InsertHandler} → INSERT statements</li>
@@ -24,6 +25,7 @@ import java.io.StringReader;
  */
 public class SqlModifier {
 
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
     private static final CCJSqlParserManager PARSER = new CCJSqlParserManager();
 
     /**
@@ -57,16 +59,20 @@ public class SqlModifier {
                 return InsertHandler.handle((Insert) stmt, column, value);
             }
 
-            // Unsupported (CREATE, DROP, ALTER, TRUNCATE, ...)
-            System.out.println("[WARN] [SqlModifier] Unsupported statement: "
-                    + stmt.getClass().getSimpleName());
+            // Unsupported (CREATE, DROP, ALTER, TRUNCATE, ...) — DDL is expected post-Task-4
+            log.debug("{} Unsupported statement type: {}",
+                    LogTags.DDL, stmt.getClass().getSimpleName());
             return sql;
 
         } catch (JSQLParserException e) {
-            System.err.println("[WARN] [SqlModifier] Parse error: " + e.getMessage());
+            // Parse failure — designed fallback to original SQL. Visible warning because
+            // unfiltered SQL is a security concern (fail-open).
+            log.warn("{} Parse error (returning original SQL): {}",
+                    LogTags.SQL, e.getMessage());
             return sql;
         } catch (Exception e) {
-            System.err.println("[WARN] [SqlModifier] Error: " + e.getMessage());
+            // Unexpected — bug or classpath issue
+            log.warn("{} Unexpected error (returning original SQL)", LogTags.SQL, e);
             return sql;
         }
     }
