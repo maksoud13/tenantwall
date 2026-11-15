@@ -8,14 +8,14 @@
 
 | Category | Tests | Status |
 |:---|:---:|:---|
-| Unit — Java | 124 | ✅ 124 / 124 |
+| Unit — Java | 176 | ✅ 176 / 176 |
 | Unit — Python | 48 | ✅ 48 / 48 |
 | Integration — 3 DBs | 88 | ✅ 88 / 88 |
 | Strategy tests | 14 | ✅ 14 / 14 |
 | Concurrency | 2 | ✅ 2 / 2 |
 | JWT E2E | 6 | ✅ 6 / 6 |
 | Load test | 8,439 req | ✅ 98.11% success, 0 leaks |
-| **Total** | **8,700+** | **🎉 All green** |
+| **Total** | **8,775+** | **🎉 All green** |
 
 ---
 
@@ -56,8 +56,8 @@ Each database runs the same assertion suite against a Dockerized instance with s
 |:---|:---:|:---|
 | `TenantwallConfigTest` | 13 | Validation, defaults, normalization |
 | `TenantContextTest` | 8 | Thread isolation, pool reuse |
-| `QueryAnalyzerTest` | 42 | Simple vs complex routing, DDL detection |
-| `SqlModifierUtilsTest` | 21 | Filter condition, WHERE wrapping, recursion |
+| `QueryAnalyzerTest` | 52 | Simple vs complex routing, DDL detection |
+| `SqlModifierUtilsTest` | 24 | Filter condition, WHERE wrapping, recursion |
 | `SmartSqlModifierTest` | 18 | Caching, counters, DDL bypass |
 | `SelectHandlerTest` | 15 | PlainSelect, UNION, CTE, subqueries |
 | `JwtSignerTest` | 14 | Signature, nonce, TTL, body hash |
@@ -65,7 +65,7 @@ Each database runs the same assertion suite against a Dockerized instance with s
 | `UpdateHandlerTest` | 4 | WHERE augmentation |
 | `DeleteHandlerTest` | 4 | WHERE augmentation |
 | `SqlModifierTest` | 3 | End-to-end rewriter |
-| **Total** | **124** | |
+| **Total** | **176** | |
 
 ---
 
@@ -277,7 +277,7 @@ Runs 1,000 parallel requests across 20 threads, alternating `TENANT_001` and `TE
 
 ═══ STEP 8: Agent Smart Stats ═══
 
-  {"fallbacks":0, "localCalls":124, "pythonCalls":10}
+  {"fallbacks":0, "localCalls":176, "pythonCalls":10}
 ✅ PASS  Python parser used (10 calls)
 
 ═══ STEP 9: Agent Cache Stats ═══

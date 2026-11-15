@@ -140,14 +140,14 @@ Expected: each tenant sees only their own products.
 
 | Category | Tests | Status |
 |:---|:---:|:---|
-| Unit — Java | 124 | ✅ 124 / 124 |
+| Unit — Java | 176 | ✅ 176 / 176 |
 | Unit — Python | 48 | ✅ 48 / 48 |
 | Integration — 3 DBs | 88 | ✅ 88 / 88 |
 | Strategy tests | 14 | ✅ 14 / 14 |
 | Concurrency (1,000 parallel) | 2 | ✅ 2 / 2, 0 leaks |
 | JWT E2E | 6 | ✅ 6 / 6 |
 | Load test (8,439 requests) | — | ✅ 98.11% success, 0 leaks |
-| **Total** | **8,700+** | **🎉 All green** |
+| **Total** | **8,775+** | **🎉 All green** |
 
 ### Integration Tests — 88/88
 

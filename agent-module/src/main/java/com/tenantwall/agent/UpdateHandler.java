@@ -6,6 +6,9 @@ import net.sf.jsqlparser.statement.update.Update;
 
 import java.util.Locale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Handles UPDATE statements.
  *
@@ -15,23 +18,23 @@ import java.util.Locale;
  * statement is at least scoped to a single tenant.
  */
 public class UpdateHandler {
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     public static String handle(Update update, String column, String value) {
 
         // ─── Excluded table check ───
         if (isExcluded(update.getTable())) {
-            System.out.println("[SKIP]️ [UpdateHandler] Table excluded, skipping: "
-                    + update.getTable().getName());
+            log.debug("{} Table excluded, skipping: {}", LogTags.UPDATE, update.getTable().getName());
             return update.toString();
         }
 
         Expression currentWhere = update.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("[OK] [UpdateHandler] Filter already exists, skipping");
+            log.debug("{} Filter already exists, skipping", LogTags.UPDATE);
         } else {
             if (currentWhere == null) {
-                System.out.println("[AGENT] [UpdateHandler] UPDATE without WHERE detected");
+                log.warn("{} UPDATE without WHERE detected", LogTags.UPDATE);
             }
 
             String prefix = extractPrefix(update.getTable());

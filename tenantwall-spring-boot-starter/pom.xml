@@ -108,7 +108,12 @@
             <artifactId>jspecify</artifactId>
             <version>1.0.1</version>
         </dependency>
-
+        <!-- spring-web (test only) — needed for WebApplicationContextRunner -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

@@ -3,8 +3,10 @@ package com.tenantwall.agent;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
+
 
 /**
  * Smart router that decides how to modify each SQL query:
@@ -15,7 +17,8 @@ import java.util.concurrent.TimeUnit;
  * 4. If Python fails → fallback to local (with warning)
  */
 public class SmartSqlModifier {
-
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
+    
     private static final Cache<String, String> CACHE = Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(30, TimeUnit.MINUTES)
@@ -55,7 +58,7 @@ public class SmartSqlModifier {
             result = tryPython(sql, column, value);
             if (result == null) {
                 fallbackCount++;
-                System.out.println("[WARN]️ [SmartModifier] Python failed, falling back to local");
+                log.warn("{} Python failed, falling back to local", LogTags.MODIFIER);
                 result = tryLocal(sql, column, value);
             } else {
                 pythonCallCount++;
@@ -87,10 +90,10 @@ public class SmartSqlModifier {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
-            System.out.println("[PYTHON] [SmartModifier] Processed by Python service");
+             log.debug("{} Processed by Python service", LogTags.PARSER);
             return result;
         } catch (PythonServiceClient.PythonServiceException e) {
-            System.err.println("[ERROR] [SmartModifier] Python error: " + e.getMessage());
+             log.error("{} Python error: {}", LogTags.MODIFIER, e.getMessage());
             return null;
         }
     }
@@ -98,10 +101,11 @@ public class SmartSqlModifier {
     private static String tryLocal(String sql, String column, String value) {
         try {
             String result = SqlModifier.addFilter(sql, column, value);
-            System.out.println("[LOCAL] [SmartModifier] Processed locally");
+            log.info(result);
+           log.debug("{} Processed locally", LogTags.MODIFIER);
             return result;
         } catch (Exception e) {
-            System.err.println("[ERROR] [SmartModifier] Local error: " + e.getMessage());
+             log.error("{} Local parse error: {}", LogTags.MODIFIER, e.getMessage(), e);
             return null;
         }
     }

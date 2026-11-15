@@ -1,7 +1,10 @@
 package com.tenantwall.starter;
 
+import com.tenantwall.agent.LogTags;
 import com.tenantwall.agent.TenantwallConfig;
 import jakarta.servlet.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,13 +29,15 @@ import org.springframework.core.annotation.Order;
 @ConditionalOnProperty(name = "tenantwall.enabled", matchIfMissing = true)
 public class TenantWallAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
+
     @Bean
     @ConditionalOnMissingBean(name = "tenantWallFilter")
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public Filter tenantWallFilter() {
         TenantwallConfig.validate(); // fail fast on bad config
         String strategy = TenantwallConfig.getTenantStrategy();
-        System.out.println("[AGENT] Auto-registering TenantWallFilter (strategy: " + strategy + ")");
+        log.info("{} Auto-registering TenantWallFilter (strategy: {})", LogTags.AGENT, strategy);
         return new TenantWallFilter();
     }
 }

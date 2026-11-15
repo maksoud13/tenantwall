@@ -6,6 +6,9 @@ import net.sf.jsqlparser.statement.delete.Delete;
 
 import java.util.Locale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Handles DELETE statements.
  *
@@ -14,23 +17,22 @@ import java.util.Locale;
  * table. The filter injection makes it scoped to the current tenant only.
  */
 public class DeleteHandler {
-
+private static final Logger log = LoggerFactory.getLogger("TenantWall");
     public static String handle(Delete delete, String column, String value) {
 
         // ─── Excluded table check ───
         if (isExcluded(delete.getTable())) {
-            System.out.println("[SKIP]️ [DeleteHandler] Table excluded, skipping: "
-                    + delete.getTable().getName());
+           log.debug("{} Table excluded, skipping: {}", LogTags.DELETE, delete.getTable().getName());
             return delete.toString();
         }
 
         Expression currentWhere = delete.getWhere();
 
         if (SqlModifierUtils.alreadyHasFilter(currentWhere, column)) {
-            System.out.println("[OK] [DeleteHandler] Filter already exists, skipping");
+           log.debug("{} Filter already exists, skipping", LogTags.DELETE);
         } else {
             if (currentWhere == null) {
-                System.out.println("[AGENT] [DeleteHandler] DELETE without WHERE detected");
+               log.warn("{} DELETE without WHERE detected", LogTags.DELETE);
             }
 
             String prefix = extractPrefix(delete.getTable());

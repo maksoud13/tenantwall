@@ -1,5 +1,8 @@
 package com.tenantwall.agent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.ServiceLoader;
 
@@ -11,6 +14,8 @@ import java.util.ServiceLoader;
  * 3. {@link NoOpTableSchemaProvider}
  */
 public final class TableSchemaRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     private static volatile TableSchemaProvider provider = resolve();
 
@@ -28,19 +33,20 @@ public final class TableSchemaRegistry {
     private static TableSchemaProvider resolve() {
         // 1) ServiceLoader — user-supplied SPI
         for (TableSchemaProvider p : ServiceLoader.load(TableSchemaProvider.class)) {
-            System.out.println("[COLS] [TenantWall] Using custom TableSchemaProvider: "
-                    + p.getClass().getName());
+            log.info("{} Using custom TableSchemaProvider: {}",
+                    LogTags.CONFIG, p.getClass().getName());
             return p;
         }
         // 2) Properties-based
         PropertiesTableSchemaProvider props = new PropertiesTableSchemaProvider();
         if (!props.isEmpty()) {
-            System.out.println("[COLS] [TenantWall] Loaded schemas for: " + props.getKnownTables());
+            log.info("{} Loaded schemas for: {}",
+                    LogTags.CONFIG, props.getKnownTables());
             return props;
         }
         // 3) NoOp — safe default
-        System.out.println("ℹ️ [TenantWall] No table schemas configured. "
-                + "INSERT without column list will be skipped.");
+        log.info("{} No table schemas configured. INSERT without column list will be skipped.",
+                LogTags.CONFIG);
         return new NoOpTableSchemaProvider();
     }
 

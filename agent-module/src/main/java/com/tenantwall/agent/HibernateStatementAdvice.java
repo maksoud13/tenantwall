@@ -1,8 +1,12 @@
 package com.tenantwall.agent;
 
 import net.bytebuddy.asm.Advice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HibernateStatementAdvice {
+
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     @Advice.OnMethodEnter
     public static void intercept(
@@ -11,10 +15,6 @@ public class HibernateStatementAdvice {
 
         if (sql == null || sql.isEmpty()) {
             return;
-        }
-
-        if (sql.contains("products") || sql.contains("categories")) {
-            System.err.println("[DEBUG] [HibernateAdvice] fired at " + origin);
         }
 
         String tenantId = TenantContext.getTenant();
@@ -27,7 +27,7 @@ public class HibernateStatementAdvice {
 
         if (!modified.equals(sql)) {
             sql = modified; // ← reassignment directly propagates
-            System.err.println("[SQL] [Hibernate] Modified: " + sql);
+            log.debug("{} Modified (via {})", LogTags.HIBERNATE, origin);
         }
     }
 }

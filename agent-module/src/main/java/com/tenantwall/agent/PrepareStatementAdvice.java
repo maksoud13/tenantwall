@@ -1,8 +1,12 @@
 package com.tenantwall.agent;
 
 import net.bytebuddy.asm.Advice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PrepareStatementAdvice {
+
+    private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     @Advice.OnMethodEnter
     public static void intercept(
@@ -22,7 +26,7 @@ public class PrepareStatementAdvice {
 
         if (!modified.equals(sql)) {
             sql = modified;
-            System.err.println("[OK] [PrepStmt] Modified: " + sql);
+            log.debug("{} Modified (Connection layer)", LogTags.CONNECTION);
         }
     }
 }
