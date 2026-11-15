@@ -41,3 +41,22 @@ clean-emojis.sh
 dist/
 build/
 out/
+# Test artifacts
+megaexample/tenantwall.properties.bak
+tenantwall-parser/.coverage
+tenantwall-parser/htmlcov/
+tenantwall-parser/.pytest_cache/
+agent-module/.jqwik-database
+megaexample/results/
+megaexample/test-reports/
+*.bak
+
+# Test artifacts — never commit
+megaexample/tenantwall.properties.bak
+tenantwall-parser/.coverage
+tenantwall-parser/htmlcov/
+tenantwall-parser/.pytest_cache/
+agent-module/.jqwik-database
+megaexample/results/
+megaexample/test-reports/
+*.bak
