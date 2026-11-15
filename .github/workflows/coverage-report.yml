@@ -1,0 +1,94 @@
+name: Coverage Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to analyze (default: main)'
+        required: false
+        default: 'main'
+
+jobs:
+  report:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build + test + coverage
+        run: mvn -B -ntp clean verify
+
+      - name: Generate text report
+        run: |
+          python3 - <<'PY' > coverage-report.txt
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          modules = ['agent-module', 'tenantwall-spring-boot-starter']
+          for module in modules:
+              xml_path = Path(module) / 'target/site/jacoco/jacoco.xml'
+              if not xml_path.exists():
+                  print(f"{module}: NO COVERAGE DATA")
+                  continue
+
+              tree = ET.parse(xml_path)
+              print(f"\n{'='*60}")
+              print(f"  {module}")
+              print(f"{'='*60}")
+
+              for counter in tree.getroot().findall('counter'):
+                  t = counter.get('type')
+                  if t in ('LINE', 'BRANCH'):
+                      cov = int(counter.get('covered', 0))
+                      mis = int(counter.get('missed', 0))
+                      total = cov + mis
+                      pct = (cov / total * 100) if total else 0
+                      print(f"  {t:8} {pct:5.1f}%  ({cov}/{total})")
+
+              # Per-class breakdown
+              print(f"\n  Per-class:")
+              for pkg in tree.getroot().findall('package'):
+                  for cls in pkg.findall('class'):
+                      name = cls.get('name', '')
+                      line_counter = next(
+                          (c for c in cls.findall('counter') if c.get('type') == 'LINE'),
+                          None
+                      )
+                      if line_counter:
+                          cov = int(line_counter.get('covered', 0))
+                          mis = int(line_counter.get('missed', 0))
+                          pct = (cov / (cov+mis) * 100) if (cov+mis) else 0
+                          print(f"    {name:50} {pct:5.1f}%")
+          PY
+
+          cat coverage-report.txt
+
+      - name: Upload text report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-txt
+          path: coverage-report.txt
+          retention-days: 4
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-html
+          path: |
+            agent-module/target/site/jacoco/
+            tenantwall-spring-boot-starter/target/site/jacoco/
+          retention-days: 4
