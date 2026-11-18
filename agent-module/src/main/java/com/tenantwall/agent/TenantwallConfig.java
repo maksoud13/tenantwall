@@ -175,11 +175,14 @@ public final class TenantwallConfig {
     public static void setExcludedTables(Collection<String> v) {
         Set<String> normalized = new java.util.HashSet<>();
         for (String s : v) {
-            if (s != null)
-                normalized.add(s.toLowerCase(java.util.Locale.ROOT));
+            if (s != null) {
+                String t = s.trim().toLowerCase(java.util.Locale.ROOT);
+                if (!t.isEmpty())
+                    normalized.add(t);
+            }
         }
         excludedTables = Set.copyOf(normalized);
-        SmartSqlModifier.clearCache(); // ← NEW
+        SmartSqlModifier.clearCache();
     }
 
     public static void setParserUrl(String v) {
