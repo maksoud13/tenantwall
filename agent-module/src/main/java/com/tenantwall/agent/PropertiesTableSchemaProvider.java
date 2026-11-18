@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * <li>Classpath: {@code tenantwall-schema.properties}</li>
  * </ol>
  */
-public class PropertiesTableSchemaProvider implements TableSchemaProvider {
+public final class PropertiesTableSchemaProvider implements TableSchemaProvider {
  private static final Logger log = LoggerFactory.getLogger("TenantWall");
     private final Map<String, List<String>> schemas = new ConcurrentHashMap<>();
 

@@ -8,23 +8,31 @@ services:
     # Inside the container, uvicorn listens on 0.0.0.0 (required by Docker),
     # but the host mapping restricts access to 127.0.0.1.
     ports:
-      - "127.0.0.1:8000:8000"
+      # Default is safe (127.0.0.1). You can override this in .env 
+      # (e.g., to 0.0.0.0:8000:8000 or a specific IP) if needed for external access.
+      - "${TENANTWALL_PARSER_PORT_MAPPING:-127.0.0.1:8000:8000}"
 
     environment:
       - PYTHONUNBUFFERED=1
-      # Production: set these
-      # - TENANTWALL_PARSER_ENFORCE_AUTH=1
-      # - TENANTWALL_PARSER_SECRET=${TENANTWALL_PARSER_SECRET}
+      # Loaded from .env file
+      - TENANTWALL_PARSER_ENFORCE_AUTH=${TENANTWALL_PARSER_ENFORCE_AUTH:-1}
+      - TENANTWALL_PARSER_SECRET=${TENANTWALL_PARSER_SECRET}
+      - TENANTWALL_PARSER_WORKERS=${TENANTWALL_PARSER_WORKERS:-4}
 
     restart: unless-stopped
 
-    volumes:
-      - ./app:/app/app
-      - ./complex.sql:/app/complex.sql
+    # Dev only: uncomment these volumes if you want hot-reload for local development.
+    # For production/Docker Hub, they are commented out so the image uses its internal code.
+    # volumes:
+    #   - ./app:/app/app
+    #   - ./complex.sql:/app/complex.sql
 
-    # Dev only: --reload for hot reload.
-    # Remove in production and use `--workers N` instead.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # ═══ Concurrency & Performance ═══
+    # Replaces --reload (which is dev-only). 
+    # We use multiple workers to handle CPU-bound sqlglot parsing in parallel.
+    # If you want to go back to dev mode, use: 
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${TENANTWALL_PARSER_WORKERS:-4}
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"]
