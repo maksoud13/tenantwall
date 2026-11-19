@@ -11,7 +11,7 @@ Every SQL statement (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) is intercepted befo
 | Metric | Value |
 |---|---|
 | **Verified databases** | MySQL 8.0, SQL Server 2022, Oracle XE 21c |
-| **Test suite** | 124 Java + 48 Python + 88 integration + 14 strategy |
+| **Test suite** | 232 Java + 48 Python + 88 integration + 14 strategy |
 | **Pass rate** | 8,700+ tests, all green |
 | **Code changes required** | **Zero** (Spring Boot Starter) |
 | **Interception points** | Hibernate `StatementPreparerImpl` + JDBC `Statement` + `Connection.prepareStatement` |
@@ -98,7 +98,7 @@ Greenfield projects that can design tenant_id from day 1 — still useful as def
 
 The Bottom Line
 Question	Answer
-Does it work?	102/102 tests passing across MySQL, MSSQL, Oracle + 5 strategies
+Does it work?	88/88 integration tests passing across MySQL (30), MSSQL (29), Oracle (29) + 5 strategies
 Is it invasive?	Zero code changes — one -javaagent flag + one property
 Is it reliable?	Fail-open fallback, no single point of failure
 Is it fast?	~0 μs on cache hit, ~0.8 ms on parse miss
