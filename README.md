@@ -9,8 +9,8 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.maksoud13/tenantwall-spring-boot-starter.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.maksoud13/tenantwall-spring-boot-starter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/maksoud13/tenantwall-parser.svg?label=Docker%20Hub)](https://hub.docker.com/r/maksoud13/tenantwall-parser)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./docs/13-license.md)
-[![Java](https://img.shields.io/badge/Java-11%2B-orange)](https://openjdk.org/)
-[![Tests](https://img.shields.io/badge/tests-178%2B-brightgreen)](./docs/07-test-results.md)
+[![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://openjdk.org/)
+[![Tests](https://img.shields.io/badge/tests-390%2B-brightgreen)](./docs/07-test-results.md)
 [![Databases](https://img.shields.io/badge/databases-3-blue)](./docs/05-support-matrix.md)
 [![Strategies](https://img.shields.io/badge/strategies-5-purple)](./docs/03-the-solution.md#tenant-resolution-strategies-v11)
 
@@ -62,7 +62,7 @@ docker run -d --name tenantwall-parser \
 ### 3. Run your app with the agent
 
 ```bash
-java -javaagent:tenantwall-agent-1.2.0.jar=tenantwall.properties -jar app.jar
+java -javaagent:agent-module-1.2.0.jar=tenantwall.properties -jar app.jar
 ```
 
 ---
@@ -91,13 +91,15 @@ Full details: [The Solution → Tenant Resolution Strategies](./docs/03-the-solu
 
 | Category | Tests | Status |
 |:---|:---:|:---|
-| Unit — Java | 178 | ✅ 178 / 178 |
+| Unit — Java | 232 | ✅ 232 / 232 |
 | Unit — Python | 48 | ✅ 48 / 48 |
 | Integration — 3 DBs | 88 | ✅ 88 / 88 |
 | Strategy tests | 14 | ✅ 14 / 14 |
 | Concurrency (1,000 parallel) | 2 | ✅ 2 / 2, 0 leaks |
 | JWT E2E | 6 | ✅ 6 / 6 |
 | Load test (8,439 requests) | — | ✅ 98.11% success, 0 leaks |
+
+**Total: 390 automated tests** across Java (232) + Python (48) + Integration (88) + Strategy (14) + Concurrency (2) + JWT E2E (6).
 
 ### Performance (with agent)
 
