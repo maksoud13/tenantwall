@@ -6,6 +6,7 @@ import net.sf.jsqlparser.statement.select.Select;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -217,5 +218,92 @@ class SelectHandlerTest {
 
         // Uppercase TENANT_ID should be detected, no duplicate added
         assertThat(countOccurrences(result.toUpperCase(), "TENANT_ID")).isEqualTo(1);
+
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // SECURITY: CTE/exclusion interaction must not bypass filtering
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void cteAliasMatchingExcludedTable_mustNotBypassFilter() throws Exception {
+        TenantwallConfig.setExcludedTables(Set.of("countries"));
+        try {
+            String sql = "WITH countries AS (SELECT * FROM users WHERE is_admin = true) "
+                    + "SELECT * FROM countries";
+            String result = SelectHandler.handle(
+                    (Select) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+
+            assertThat(result)
+                    .as("CRITICAL: CTE alias 'countries' must NOT bypass users filtering")
+                    .containsPattern("users\\s*\\.\\s*tenant_id");
+        } finally {
+            TenantwallConfig.setExcludedTables(Set.of());
+        }
+    }
+
+    @Test
+    void physicalExcludedTableInsideCte_mustNotBeFiltered() throws Exception {
+        TenantwallConfig.setExcludedTables(Set.of("audit_log"));
+        try {
+            String sql = "WITH x AS (SELECT * FROM audit_log WHERE id > 0) "
+                    + "SELECT * FROM x";
+            String result = SelectHandler.handle(
+                    (Select) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+
+            assertThat(result)
+                    .as("audit_log is excluded — must not receive a tenant filter")
+                    .doesNotContain("audit_log.tenant_id");
+        } finally {
+            TenantwallConfig.setExcludedTables(Set.of());
+        }
+    }
+
+    @Test
+    void cteReferenceInOuter_mustNotGetPrefixFilter() throws Exception {
+        String sql = "WITH my_cte AS (SELECT id, name FROM products) "
+                + "SELECT * FROM my_cte";
+        String result = SelectHandler.handle(
+                (Select) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+
+        // CTE body filtered
+        assertThat(result).containsPattern("products\\s*\\.\\s*tenant_id");
+        // Outer CTE reference must NOT be qualified (no such column on the virtual
+        // relation)
+        assertThat(result)
+                .as("Outer CTE reference has no tenant_id column — must not be filtered")
+                .doesNotContain("my_cte.tenant_id");
+    }
+
+    @Test
+    void subqueryAliasMatchingExcludedTable_mustNotBypassFilter() throws Exception {
+        TenantwallConfig.setExcludedTables(Set.of("audit_log"));
+        try {
+            String sql = "SELECT * FROM (SELECT * FROM users) AS audit_log";
+            String result = SelectHandler.handle(
+                    (Select) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+
+            assertThat(result)
+                    .as("Subquery alias 'audit_log' must not be treated as a physical excluded table")
+                    .containsPattern("users\\s*\\.\\s*tenant_id");
+        } finally {
+            TenantwallConfig.setExcludedTables(Set.of());
+        }
+    }
+
+    @Test
+    void excludedTableInJoin_mustNotGetFiltered_butIncludedDoes() throws Exception {
+        TenantwallConfig.setExcludedTables(Set.of("audit_log"));
+        try {
+            String sql = "SELECT * FROM products p "
+                    + "JOIN audit_log a ON p.id = a.product_id";
+            String result = SelectHandler.handle(
+                    (Select) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+
+            assertThat(result).contains("p.tenant_id");
+            assertThat(result).doesNotContain("a.tenant_id");
+        } finally {
+            TenantwallConfig.setExcludedTables(Set.of());
+        }
     }
 }

@@ -1,28 +1,28 @@
 # Test Results
 
-> All numbers from the current build (2026-11-15). Tests run against Dockerized databases seeded with two tenants — `SHOP_ALPHA` and `SHOP_BETA`.
+ All numbers from the current build (**v1.2.1**, 2026-11-21). Tests run against Dockerized databases seeded with two tenants — `SHOP_ALPHA` and `SHOP_BETA`.
 
 ---
 
 ## Summary
 
-| Category | Tests | Status |
-|:---|:---:|:---|
-| Unit — Java | 176 | ✅ 176 / 176 |
+| Unit — Java | 247 | ✅ 247 / 247 |
 | Unit — Python | 48 | ✅ 48 / 48 |
 | Integration — 3 DBs | 88 | ✅ 88 / 88 |
 | Strategy tests | 14 | ✅ 14 / 14 |
 | Concurrency | 2 | ✅ 2 / 2 |
 | JWT E2E | 6 | ✅ 6 / 6 |
-| Load test | 8,439 req | ✅ 98.11% success, 0 leaks |
-| **Total** | **8,775+** | **🎉 All green** |
+| **Total (functional tests)** | **405** | **🎉 All green** |
+
+> **Load test (separate):** 8,439 requests · 98.11% success rate · 0 tenant leaks.  
+> Load test requests are not counted as functional tests.
 
 ---
 
 ## Integration Tests — Verified Databases
 
 | Database | Version | Tests | Result |
-|:---|:---|:---:|:---|
+| :--- | :--- | :---: | :--- |
 | MySQL | 8.0 | 30 | ✅ 30 / 30 — 1.2s |
 | SQL Server | 2022 | 29 | ✅ 29 / 29 — 1.5s |
 | Oracle | XE 21c | 29 | ✅ 29 / 29 — 1.8s |
@@ -33,9 +33,9 @@ Each database runs the same assertion suite against a Dockerized instance with s
 ### Integration Test Categories
 
 | Category | Tests | Purpose |
-|:---|:---:|:---|
+| :--- | :---: | :--- |
 | DB State | 1 / DB | Sanity-check seed data |
-| READ isolation | 3 / DB | List, cross-tenant list, per-tenant count |
+| READ isolation | 7 / DB | List, cross-tenant list, per-tenant counts, categories, suppliers |
 | Get-one isolation | 4 / DB | Own vs cross, both directions |
 | CREATE + injection | 3 / DB | `tenant_id` auto-injected, cross-tenant visibility check |
 | UPDATE isolation | 4 / DB | Own update works; cross update → 404, DB unchanged |
@@ -43,6 +43,7 @@ Each database runs the same assertion suite against a Dockerized instance with s
 | CTE reports | 4 / DB | Complex SQL handled by Python parser, no leaks |
 | Python parser stats | 1 / DB | `pythonCalls > 0`, `fallbacks = 0` |
 | Cache stats | 1 / DB | `hits > 0` after repeat queries |
+| **Total (MySQL / MSSQL / Oracle)** | **30 / 29 / 29** | |
 
 ---
 
@@ -52,23 +53,48 @@ Each database runs the same assertion suite against a Dockerized instance with s
 >
 > Coverage: **42.5% line / 41.8% branch** (threshold 40%, enforced in CI)
 
-| Class | Tests | What it covers |
-|:---|:---:|:---|
-| `TenantwallConfigTest` | 13 | Validation, defaults, normalization |
-| `TenantContextTest` | 8 | Thread isolation, pool reuse |
 | `QueryAnalyzerTest` | 52 | Simple vs complex routing, DDL detection |
+| `TenantwallConfigTest` | 45 | Validation, defaults, normalization |
 | `SqlModifierUtilsTest` | 24 | Filter condition, WHERE wrapping, recursion |
 | `SmartSqlModifierTest` | 18 | Caching, counters, DDL bypass |
-| `SelectHandlerTest` | 15 | PlainSelect, UNION, CTE, subqueries |
+| `SelectHandlerTest` | 20 | PlainSelect, UNION, CTE, subqueries, exclusion semantics |
+| `PropertiesTableSchemaProviderTest` | 15 | Schema loading from properties |
 | `JwtSignerTest` | 14 | Signature, nonce, TTL, body hash |
-| `InsertHandlerTest` | 5 | Column injection, INSERT…SELECT |
-| `UpdateHandlerTest` | 4 | WHERE augmentation |
-| `DeleteHandlerTest` | 4 | WHERE augmentation |
+| `TenantContextTest` | 8 | Thread isolation, pool reuse |
+| `TableSchemaRegistryTest` | 7 | Registry lifecycle, lookups |
+| `InsertHandlerTest` | 8 | Column injection, INSERT…SELECT, exclusion bypass |
+| `UpdateHandlerTest` | 8 | WHERE + SET subqueries, exclusion bypass |
+| `DeleteHandlerTest` | 7 | WHERE subqueries, exclusion bypass |
 | `SqlModifierTest` | 3 | End-to-end rewriter |
-| **Total** | **176** | |
+| **Agent module total** | **229** | |
+| **Starter module total** | **18** | `TenantWallAutoConfigurationTest` + `TenantWallFilterTest` |
+| **Grand total — Java** | **247** | |
 
 ---
 
+## Security Regression Tests (v1.2.1)
+
+Added in v1.2.1 to close 6 cross-tenant bypass paths triggered when a
+table is excluded via `tenantwall.filter.excludedTables` and the query
+contains a CTE or subquery that touches a non-excluded table.
+
+| Test class | Tests | What it proves |
+| :--- | :---: | :--- |
+| `SelectHandlerTest` | +5 | CTE alias spoofing blocked; `FROM (subquery)` is recursed; CTE reference not prefix-filtered; physical excluded table inside CTE not filtered; mixed JOIN keeps included table filtered |
+| `UpdateHandlerTest` | +4 | WHERE subquery processed even when target excluded; SET expression subquery processed; both simultaneously |
+| `DeleteHandlerTest` | +3 | WHERE subquery processed even when target excluded; no-WHERE no-filter; non-excluded target still filtered |
+| `InsertHandlerTest` | +3 | `INSERT … SELECT` body always processed regardless of target exclusion; non-excluded source filtered; excluded VALUES untouched |
+
+**Total new tests:** 15
+
+See [`docs/06-security-model.md` § Table Exclusion Semantics](./06-security-model.md#table-exclusion-semantics)
+for the full model.
+
+Run them:
+
+```bash
+mvn test -pl agent-module \
+  -Dtest="SelectHandlerTest,UpdateHandlerTest,DeleteHandlerTest,InsertHandlerTest"
 ## Unit Tests — Python
 
 > Location: `tenantwall-parser/tests/`
@@ -220,6 +246,7 @@ Runs 1,000 parallel requests across 20 threads, alternating `TENANT_001` and `TE
 > **Note — 404 vs 403 for cross-tenant:** This output is from the `examples/` integration suite (`SHOP_ALPHA` / `SHOP_BETA`), where the controller returns `404` for cross-tenant access. In the `megaexample` suite, `TenantWallFilter` throws an `AccessDeniedException` before the controller is reached, so the response is `403`. Both are correct — the difference is in the controller layer, not in the agent.
 
 ```
+
 ═══ STEP 1: DB State ═══
 
   products:   10
@@ -293,6 +320,7 @@ SUMMARY
   WARN: 0
 
 🎉 All tests passed!
+
 ```
 
 ---
@@ -350,7 +378,7 @@ Every integration script:
 ### Flags
 
 | Flag | Purpose |
-|:---|:---|
+| :--- | :--- |
 | `DEBUG=1` | Show diagnostic info (curl binary, URLs, retries) |
 | `BASE_URL=http://host:port` | Override the app URL |
 | `NO_OPEN=1` | Don't try to open the PDF/screenshots |
@@ -380,7 +408,7 @@ Every integration script:
 ## What Each Test Proves
 
 | Claim | Proved by |
-|:---|:---|
+| :--- | :--- |
 | SELECT is tenant-scoped | Load test `isolation_broken=0` + Integration STEP 2–3 |
 | INSERT auto-injects `tenant_id` | Integration STEP 4 |
 | UPDATE is scoped | Integration STEP 5 |
@@ -394,6 +422,15 @@ Every integration script:
 | Cache works | Integration STEP 9 + Load test stats |
 
 **No unverified claims. No marketing language. Just tests.**
+
+## Coverage
+
+| Module | Line | Branch | CI Threshold |
+| :--- | :---: | :---: | :---: |
+| `agent-module` | 42.5% | 41.8% | 40% (enforced) |
+| `tenantwall-parser` (Python) | 78% | — | — |
+
+> **v1.3.0 target:** 80% line coverage on `agent-module`. Priority classes: `TenantwallConfig`, `PythonServiceClient`, `TableSchemaRegistry`, `SqlModifier` error paths.
 
 ---
 

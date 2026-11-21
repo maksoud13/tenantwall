@@ -313,5 +313,111 @@ Before going to production:
 - [ ] Incident response plan documents "tenant leak" scenario
 
 ---
+## Table Exclusion Semantics
 
+TenantWall supports excluding specific tables from tenant filtering via
+`tenantwall.filter.excludedTables`. Typical use cases: shared reference data
+(`countries`, `currencies`) or shared infrastructure tables
+(`schema_migrations`, `audit_log` written by a superuser process).
+
+### How exclusion is evaluated
+
+Starting with **v1.2.1**, exclusion is evaluated **per physical FROM item**
+inside each SELECT scope — not per query. This means:
+
+| Item type | Exclusion applies? |
+|---|---|
+| Physical table in `FROM` / `JOIN` | ✅ yes |
+| Physical table inside a CTE body | ✅ yes (evaluated in the CTE's own scope) |
+| Physical table inside a subquery | ✅ yes (evaluated in the subquery's own scope) |
+| **CTE alias** (name matches a CTE defined in scope) | ❌ no — never treated as physical |
+| **Subquery alias** (`AS x` on a parenthesized SELECT) | ❌ no — never treated as physical |
+
+The last two rows are security-critical. Without them, an attacker could
+define a CTE whose alias matches an excluded table name and cause the entire
+query — including the CTE body — to skip filtering.
+
+### Example — CTE alias vs physical table
+
+Configuration:
+```properties
+tenantwall.filter.excludedTables=countries
+```
+
+Query:
+```sql
+WITH countries AS (SELECT * FROM users WHERE is_admin = true)
+SELECT * FROM countries;
+```
+
+**Pre-v1.2.1 (vulnerable):** the outer `FROM countries` was matched against
+`excludedTables`, the query was skipped wholesale, and the `users` table
+inside the CTE body was returned unfiltered across all tenants.
+
+**v1.2.1+ (fixed):** the outer `FROM countries` is recognized as a CTE
+reference, not a physical table — no exclusion is applied. The `users`
+table inside the CTE is a physical table and receives the tenant filter:
+
+```sql
+WITH countries AS (
+    SELECT * FROM users
+    WHERE is_admin = true AND users.tenant_id = 'ACME'
+)
+SELECT * FROM countries;
+```
+
+### Subquery handling guarantees (v1.2.1+)
+
+The tenant filter is guaranteed to reach subqueries in:
+
+| Handler | Subquery location |
+|---|---|
+| `SELECT` | FROM subqueries, WHERE subqueries, JOIN ON subqueries |
+| `UPDATE` | WHERE subqueries, SET expression subqueries |
+| `DELETE` | WHERE subqueries |
+| `INSERT ... SELECT` | The entire SELECT body — always processed |
+
+Even when the **target** table is excluded, subqueries in other clauses are
+still processed. This prevents a pattern like:
+
+```sql
+-- excludedTables = audit_log
+DELETE FROM audit_log
+WHERE user_id IN (SELECT id FROM users WHERE is_admin = true);
+```
+
+from deleting `users` rows from all tenants via the subquery result.
+
+### Known limitation — JOIN filter scope (v1.2.1)
+
+TenantWall injects the tenant filter only on the **primary FROM table** of
+a SELECT. Tables introduced via `JOIN ... ON ...` do not automatically
+receive a tenant filter. If the primary FROM table is excluded while a
+joined table is not, the joined table will not be filtered.
+
+**Workaround:** do not exclude the primary FROM table in queries where a
+non-excluded table is joined; ensure tenant scoping at the application
+layer for those specific queries.
+
+**Roadmap:** full JOIN-aware filtering is planned for v1.3.0.
+
+### Verification
+
+The regression tests in `SelectHandlerTest`, `UpdateHandlerTest`,
+`DeleteHandlerTest`, and `InsertHandlerTest` cover the exclusion semantics:
+
+- `cteAliasMatchingExcludedTable_mustNotBypassFilter`
+- `physicalExcludedTableInsideCte_mustNotBeFiltered`
+- `cteReferenceInOuter_mustNotGetPrefixFilter`
+- `subqueryAliasMatchingExcludedTable_mustNotBypassFilter`
+- `excludedTarget_whereSubquery_mustStillBeFiltered` (×2 — UPDATE + DELETE)
+- `excludedTarget_whereSubqueryAndSetSubquery_bothFiltered` (UPDATE)
+- `excludedTarget_insertSelect_selectBodyStillFiltered` (INSERT)
+- `nonExcludedTarget_setSubquery_mustBeFiltered` (UPDATE)
+
+Run them with:
+
+```bash
+mvn test -pl agent-module -Dtest="SelectHandlerTest,UpdateHandlerTest,DeleteHandlerTest,InsertHandlerTest"
+```
 **Next:** [Test Results →](./07-test-results.md)
