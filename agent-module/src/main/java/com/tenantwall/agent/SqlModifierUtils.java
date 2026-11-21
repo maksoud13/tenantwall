@@ -187,7 +187,14 @@ public class SqlModifierUtils {
     public static void processExpression(Expression expr, String column, String value) {
         if (expr == null)
             return;
-
+        if (expr instanceof ExpressionList<?> list) {
+            for (Object o : list) {
+                if (o instanceof Expression inner) {
+                    processExpression(inner, column, value);
+                }
+            }
+            return;
+        }
         // Parenthesized SELECT (e.g., IN (SELECT ...))
         if (expr instanceof ParenthesedSelect) {
             ParenthesedSelect ps = (ParenthesedSelect) expr;

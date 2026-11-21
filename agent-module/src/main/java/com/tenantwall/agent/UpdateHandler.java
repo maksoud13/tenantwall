@@ -100,7 +100,7 @@ public class UpdateHandler {
                         handled = true;
                     }
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
-                    // Not an ExpressionList — fall through
+                  log.warn("{} SET expression processing failed: {}", LogTags.UPDATE, ignored.getMessage());
                 }
 
                 if (!handled && raw instanceof Expression expr) {
