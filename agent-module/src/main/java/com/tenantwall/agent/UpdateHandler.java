@@ -75,7 +75,10 @@ public class UpdateHandler {
      *
      * <p>
      * Uses reflection to stay compatible with future JSqlParser versions
-     * where the wrapping type may change.
+     * where the wrapping type may change. If reflection fails (e.g. the API
+     * changed), we fall back to treating the whole value as an
+     * {@link Expression} directly — which is always safe because
+     * {@link ExpressionList} implements {@link Expression}.
      */
     private static void processSetExpressions(Update update, String column, String value) {
         try {
@@ -100,11 +103,14 @@ public class UpdateHandler {
                         handled = true;
                     }
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
-                  log.warn("{} SET expression processing failed: {}", LogTags.UPDATE, ignored.getMessage());
+                    log.warn("{} SET expression processing failed: {}", LogTags.UPDATE, ignored.getMessage());
                 }
 
-                if (!handled && raw instanceof Expression expr) {
-                    SqlModifierUtils.processExpression(expr, column, value);
+                if (!handled) {
+                    // ExpressionList<?> always implements Expression, so this cast is
+                    // unconditionally safe. The instanceof check that was here before
+                    // was vacuous (SpotBugs BC_VACUOUS_INSTANCEOF) and has been removed.
+                    SqlModifierUtils.processExpression((Expression) raw, column, value);
                 }
             }
         } catch (RuntimeException e) {
