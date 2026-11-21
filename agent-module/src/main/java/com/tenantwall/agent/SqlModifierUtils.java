@@ -164,6 +164,21 @@ public class SqlModifierUtils {
     // ═══════════════════════════════════════════════════════════════
     // 4. Recursive subquery processing
     // ═══════════════════════════════════════════════════════════════
+    public static void processSelectItems(Select select, String column, String value) {
+        if (!(select instanceof PlainSelect ps)) {
+            return;
+        }
+        List<SelectItem<?>> items = ps.getSelectItems();
+        if (items == null) {
+            return;
+        }
+        for (SelectItem<?> item : items) {
+            if (item == null) {
+                continue;
+            }
+            processExpression(item.getExpression(), column, value);
+        }
+    }
 
     /**
      * Recursively processes an expression to find and modify subqueries.
@@ -172,7 +187,14 @@ public class SqlModifierUtils {
     public static void processExpression(Expression expr, String column, String value) {
         if (expr == null)
             return;
-
+        if (expr instanceof ExpressionList<?> list) {
+            for (Object o : list) {
+                if (o instanceof Expression inner) {
+                    processExpression(inner, column, value);
+                }
+            }
+            return;
+        }
         // Parenthesized SELECT (e.g., IN (SELECT ...))
         if (expr instanceof ParenthesedSelect) {
             ParenthesedSelect ps = (ParenthesedSelect) expr;
@@ -199,6 +221,25 @@ public class SqlModifierUtils {
             processExpression(((Parenthesis) expr).getExpression(), column, value);
             return;
         }
+        if (expr instanceof Select sel) {
+            log.debug("{} Found subquery (Select expression)", LogTags.SQL);
+            SelectHandler.handle(sel, column, value);
+            return;
+        }
+
+        // Function arguments may contain scalar subqueries:
+        // e.g. COALESCE((SELECT tenant_id FROM x), 'T1')
+        if (expr instanceof net.sf.jsqlparser.expression.Function function) {
+            ExpressionList<?> params = function.getParameters();
+            if (params != null) {
+                for (Object o : params) {
+                    if (o instanceof Expression inner) {
+                        processExpression(inner, column, value);
+                    }
+                }
+            }
+            return;
+        }
 
         if (expr instanceof InExpression) {
             InExpression in = (InExpression) expr;
@@ -207,6 +248,8 @@ public class SqlModifierUtils {
             Expression right = in.getRightExpression();
             if (right instanceof ParenthesedSelect) {
                 SelectHandler.handle(((ParenthesedSelect) right).getSelect(), column, value);
+            } else if (right instanceof Select) {
+                SelectHandler.handle((Select) right, column, value);
             } else if (right instanceof ExpressionList) {
                 ExpressionList exprList = (ExpressionList) right;
                 List<?> items = exprList.getExpressions();

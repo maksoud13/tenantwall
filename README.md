@@ -16,10 +16,48 @@
 
 TenantWall is a Java agent that intercepts every SQL query at the JDBC layer and injects tenant filters — with **zero application code changes**. It works with any framework that uses JDBC (Spring Boot, Quarkus, plain Java) and any database.
 
+**SELECT** — row-level read isolation:
 ```diff
-- SELECT * FROM products;                              -- ❌ leaks all tenants
-+ SELECT * FROM products WHERE tenant_id = 'ACME';    -- ✅ tenant-isolated
+- SELECT * FROM products;
++ SELECT * FROM products WHERE tenant_id = 'ACME';
 ```
+
+**INSERT** — `tenant_id` injected at the exact schema position:
+```diff
+- INSERT INTO products (name, price) VALUES ('Widget', 99);
++ INSERT INTO products (name, price, tenant_id) VALUES ('Widget', 99, 'ACME');
+```
+
+**UPDATE** — WHERE clause hardened so no cross-tenant row can be modified:
+```diff
+- UPDATE products SET price = 100 WHERE id = 42;
++ UPDATE products SET price = 100 WHERE id = 42 AND products.tenant_id = 'ACME';
+```
+
+**DELETE** — same protection as UPDATE:
+```diff
+- DELETE FROM products WHERE id = 42;
++ DELETE FROM products WHERE id = 42 AND products.tenant_id = 'ACME';
+```
+
+**CTE with aggregation** — CTE bodies are filtered before aggregation runs:
+```diff
+- WITH totals AS (SELECT customer_id, SUM(amount) total FROM orders GROUP BY customer_id)
+- SELECT * FROM totals;
++ WITH totals AS (SELECT customer_id, SUM(amount) total FROM orders WHERE orders.tenant_id = 'ACME' GROUP BY customer_id)
++ SELECT * FROM totals;
+```
+
+**Chained CTEs with JOIN** — every physical table in every CTE body is scoped:
+```diff
+- WITH active AS (SELECT * FROM products WHERE active = true),
+-      items  AS (SELECT * FROM order_items)
+- SELECT * FROM active JOIN items ON active.id = items.product_id;
++ WITH active AS (SELECT * FROM products WHERE active = true AND products.tenant_id = 'ACME'),
++      items  AS (SELECT * FROM order_items WHERE order_items.tenant_id = 'ACME')
++ SELECT * FROM active JOIN items ON active.id = items.product_id;
+```
+
 
 Your application code doesn't change. Not one line. Not one annotation.
 

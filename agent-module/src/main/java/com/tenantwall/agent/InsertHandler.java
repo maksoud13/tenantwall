@@ -19,20 +19,28 @@ public class InsertHandler {
     private static final Logger log = LoggerFactory.getLogger("TenantWall");
 
     public static String handle(Insert insert, String column, String value) {
-
-        // ─── Excluded table check ───
-        if (isExcluded(insert.getTable())) {
-            log.debug("{} Table excluded, skipping: {}", LogTags.INSERT, insert.getTable().getName());
-            return insert.toString();
-        }
+        boolean targetExcluded = isExcluded(insert.getTable());
 
         Select select = insert.getSelect();
         boolean isInsertSelect = select != null
                 && !"Values".equals(select.getClass().getSimpleName());
 
         if (isInsertSelect) {
-            log.debug("{} INSERT ... SELECT detected", LogTags.INSERT);
+            log.debug("{} INSERT ... SELECT detected (target {}: {})",
+                    LogTags.INSERT,
+                    targetExcluded ? "excluded" : "included",
+                    insert.getTable().getName());
+            // ─── ALWAYS process the SELECT body ───
+            // Even if the target is excluded, the SELECT source tables MUST be filtered.
+            // Otherwise: INSERT INTO audit_log SELECT * FROM users leaks all tenants.
             SelectHandler.handle(select, column, value);
+            return insert.toString();
+        }
+
+        // INSERT ... VALUES
+        if (targetExcluded) {
+            log.debug("{} Target table excluded, skipping tenant_id injection: {}",
+                    LogTags.INSERT, insert.getTable().getName());
             return insert.toString();
         }
 
