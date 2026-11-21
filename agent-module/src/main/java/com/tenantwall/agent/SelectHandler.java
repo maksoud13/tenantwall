@@ -144,7 +144,17 @@ public class SelectHandler {
         if (from instanceof ParenthesedSelect ps && ps.getSelect() != null) {
             process(ps.getSelect(), column, value, cteContext);
         }
-
+        if (plainSelect.getJoins() != null) {
+            for (Join join : plainSelect.getJoins()) {
+                FromItem right = join.getRightItem();
+                if (right instanceof LateralSubSelect lat && lat.getSelect() != null) {
+                    // LATERAL in FROM — filter its body recursively
+                    process(lat.getSelect(), column, value, cteContext);
+                } else if (right instanceof ParenthesedSelect ps && ps.getSelect() != null) {
+                    process(ps.getSelect(), column, value, cteContext);
+                }
+            }
+        }
         // ─── Decide whether to add WHERE filter at the OUTER level ───
         if (shouldFilterFromItem(from, cteContext)) {
             String fromAlias = extractFromAlias(plainSelect);
@@ -159,6 +169,7 @@ public class SelectHandler {
             log.debug("{} FROM item skipped (excluded/CTE/subquery): {}",
                     LogTags.SELECT, from);
         }
+          SqlModifierUtils.processSelectItems(plainSelect, column, value);
 
         // ─── Process subqueries inside WHERE ───
         if (plainSelect.getWhere() != null) {
