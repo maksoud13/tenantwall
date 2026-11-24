@@ -15,13 +15,26 @@ import java.io.StringReader;
 /**
  * Main entry point for SQL modification.
  *
- * <p>Routes each statement type to its dedicated handler:
+ * <p>
+ * Routes each statement type to its dedicated handler:
  * <ul>
- * <li>{@link SelectHandler} → SELECT queries (with JOIN, UNION, subqueries)</li>
+ * <li>{@link SelectHandler} → SELECT queries (with JOIN, UNION,
+ * subqueries)</li>
  * <li>{@link UpdateHandler} → UPDATE statements</li>
  * <li>{@link DeleteHandler} → DELETE statements</li>
  * <li>{@link InsertHandler} → INSERT statements</li>
  * </ul>
+ *
+ * <h2>Failure semantics</h2>
+ *
+ * <p>
+ * Parse failures raise {@link TenantWallParseException}. The caller
+ * ({@link SmartSqlModifier}) applies {@code ParserFailureMode} to decide
+ * whether to fail-closed, fall back, or (unsafely) fail-open.
+ *
+ * <p>
+ * This class does NOT swallow parse errors. Swallowing here would bypass
+ * the configured failure mode — a security regression.
  */
 public class SqlModifier {
 
@@ -35,46 +48,60 @@ public class SqlModifier {
      * @param sql    the original SQL statement
      * @param column the filter column name (e.g., "tenant_id")
      * @param value  the filter value (e.g., "TENANT_A")
-     * @return the modified SQL, or the original if unsupported / unparseable
+     * @return the modified SQL
+     * @throws TenantWallParseException if parsing or rewriting fails
      */
     public static String addFilter(String sql, String column, String value) {
-        if (sql == null || column == null || column.isEmpty()
-                || value == null || value.isEmpty()) {
-            return sql;
+        // ─── Defensive null/empty check ───
+        // Callers (SmartSqlModifier) validate inputs already, but this class
+        // may be invoked directly (tests, legacy code paths). Null inputs are
+        // a configuration error — fail-closed rather than silently passing.
+        if (sql == null) {
+            return null; // No SQL — normal for JDBC metadata calls
+        }
+        if (column == null || column.isEmpty()) {
+            throw new TenantWallParseException(
+                    "TenantWall: filter column is not configured.");
+        }
+        if (value == null || value.isEmpty()) {
+            throw new TenantWallParseException(
+                    "TenantWall: tenant ID is missing for this request.");
         }
 
+        Statement stmt;
         try {
-            Statement stmt = PARSER.parse(new StringReader(sql));
-
-            if (stmt instanceof Select) {
-                return SelectHandler.handle((Select) stmt, column, value);
-            }
-            if (stmt instanceof Update) {
-                return UpdateHandler.handle((Update) stmt, column, value);
-            }
-            if (stmt instanceof Delete) {
-                return DeleteHandler.handle((Delete) stmt, column, value);
-            }
-            if (stmt instanceof Insert) {
-                return InsertHandler.handle((Insert) stmt, column, value);
-            }
-
-            // Unsupported (CREATE, DROP, ALTER, TRUNCATE, ...) — DDL is expected post-Task-4
-            log.debug("{} Unsupported statement type: {}",
-                    LogTags.DDL, stmt.getClass().getSimpleName());
-            return sql;
-
+            stmt = PARSER.parse(new StringReader(sql));
         } catch (JSQLParserException e) {
-            // Parse failure — designed fallback to original SQL. Visible warning because
-            // unfiltered SQL is a security concern (fail-open).
-            log.warn("{} Parse error (returning original SQL): {}",
-                    LogTags.SQL, e.getMessage());
-            return sql;
+            // Parse failure — caller decides fail-closed vs fallback vs fail-open.
+            // We must NOT swallow here; that would bypass the configured mode.
+            throw new TenantWallParseException(
+                    "TenantWall: failed to parse SQL: " + e.getMessage(), e);
         } catch (Exception e) {
-            // Unexpected — bug or classpath issue
-            log.warn("{} Unexpected error (returning original SQL)", LogTags.SQL, e);
-            return sql;
+            // Unexpected — surface as a distinct error so callers can distinguish
+            // parser bugs from syntax errors.
+            throw new TenantWallParseException(
+                    "TenantWall: unexpected parser error: " + e.getMessage(), e);
         }
+
+        if (stmt instanceof Select) {
+            return SelectHandler.handle((Select) stmt, column, value);
+        }
+        if (stmt instanceof Update) {
+            return UpdateHandler.handle((Update) stmt, column, value);
+        }
+        if (stmt instanceof Delete) {
+            return DeleteHandler.handle((Delete) stmt, column, value);
+        }
+        if (stmt instanceof Insert) {
+            return InsertHandler.handle((Insert) stmt, column, value);
+        }
+
+        // Unsupported statement type (CREATE, DROP, ALTER, TRUNCATE, ...).
+        // DDL is intentionally untouched — no exception. Migrations rely on
+        // exact schema SQL, and rewriting them would break Flyway/Liquibase.
+        log.debug("{} Unsupported statement type: {}",
+                LogTags.DDL, stmt.getClass().getSimpleName());
+        return sql;
     }
 
     /**

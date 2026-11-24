@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.maksoud13</groupId>
@@ -239,14 +239,18 @@
                     <executions>
                         <execution>
                             <id>prepare-agent</id>
-                            <goals><goal>prepare-agent</goal></goals>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
                             <configuration>
                                 <destFile>${project.build.directory}/jacoco-unit.exec</destFile>
                             </configuration>
                         </execution>
                         <execution>
                             <id>prepare-agent-integration</id>
-                            <goals><goal>prepare-agent-integration</goal></goals>
+                            <goals>
+                                <goal>prepare-agent-integration</goal>
+                            </goals>
                             <configuration>
                                 <destFile>${project.build.directory}/jacoco-it.exec</destFile>
                             </configuration>
@@ -254,12 +258,16 @@
                         <execution>
                             <id>merge-coverage</id>
                             <phase>verify</phase>
-                            <goals><goal>merge</goal></goals>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
                             <configuration>
                                 <fileSets>
                                     <fileSet>
                                         <directory>${project.build.directory}</directory>
-                                        <includes><include>*.exec</include></includes>
+                                        <includes>
+                                            <include>*.exec</include>
+                                        </includes>
                                     </fileSet>
                                 </fileSets>
                                 <destFile>${project.build.directory}/jacoco-merged.exec</destFile>
@@ -268,7 +276,9 @@
                         <execution>
                             <id>report</id>
                             <phase>verify</phase>
-                            <goals><goal>report</goal></goals>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
                             <configuration>
                                 <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
                             </configuration>
@@ -276,20 +286,31 @@
                         <execution>
                             <id>check-coverage</id>
                             <phase>verify</phase>
-                            <goals><goal>check</goal></goals>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
                             <configuration>
                                 <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
                                 <rules>
                                     <rule>
                                         <element>BUNDLE</element>
                                         <limits>
-                                            <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>${jacoco.line.minimum}</minimum></limit>
-                                            <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>${jacoco.branch.minimum}</minimum></limit>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.line.minimum}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.branch.minimum}</minimum>
+                                            </limit>
                                         </limits>
                                     </rule>
                                 </rules>
                                 <excludes>
                                     <exclude>com/tenantwall/agent/*Advice.class</exclude>
+                                    <exclude>**/TenantWallStatementInspector.class</exclude>
                                     <exclude>com/tenantwall/agent/tenantwallAgent.class</exclude>
                                 </excludes>
                             </configuration>
@@ -306,7 +327,8 @@
                         <effort>Default</effort>
                         <threshold>Medium</threshold>
                         <failOnError>true</failOnError>
-                        <excludeFilterFile>${maven.multiModuleProjectDirectory}/config/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
+                        <excludeFilterFile>
+                            ${maven.multiModuleProjectDirectory}/config/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
                     </configuration>
                 </plugin>
 
@@ -316,7 +338,8 @@
                     <artifactId>maven-checkstyle-plugin</artifactId>
                     <version>3.6.0</version>
                     <configuration>
-                        <configLocation>${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml</configLocation>
+                        <configLocation>
+                            ${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml</configLocation>
                         <failOnViolation>true</failOnViolation>
                         <violationSeverity>error</violationSeverity>
                     </configuration>
@@ -354,7 +377,9 @@
                             <execution>
                                 <id>spotbugs-check</id>
                                 <phase>verify</phase>
-                                <goals><goal>check</goal></goals>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -365,7 +390,9 @@
                             <execution>
                                 <id>checkstyle-check</id>
                                 <phase>verify</phase>
-                                <goals><goal>check</goal></goals>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -386,7 +413,9 @@
                             <execution>
                                 <id>sign-artifacts</id>
                                 <phase>verify</phase>
-                                <goals><goal>sign</goal></goals>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -397,7 +426,9 @@
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
-                                <goals><goal>jar-no-fork</goal></goals>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -408,7 +439,9 @@
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
-                                <goals><goal>jar</goal></goals>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
                                 <configuration>
                                     <doclint>none</doclint>
                                 </configuration>

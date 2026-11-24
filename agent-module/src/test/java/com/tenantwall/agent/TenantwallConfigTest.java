@@ -329,7 +329,7 @@ class TenantwallConfigTest {
 
         TenantwallConfig.initialize(null);
 
-        assertEquals(TenantwallConfig.MissingValueStrategy.SKIP, TenantwallConfig.getOnMissing());
+        assertEquals(TenantwallConfig.MissingValueStrategy.FAIL, TenantwallConfig.getOnMissing());
         assertEquals(TenantwallConfig.InsertStrategy.SKIP, TenantwallConfig.getInsertStrategy());
     }
 

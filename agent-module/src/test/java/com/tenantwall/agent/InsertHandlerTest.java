@@ -112,4 +112,123 @@ class InsertHandlerTest {
             TenantwallConfig.setExcludedTables(Set.of());
         }
     }
+    // ═══════════════════════════════════════════════════════════════
+    // Mode 2: Schema-based injection
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void insertNoColumns_schemaConfigured_tenantAtMiddle_injectsAtPosition() throws Exception {
+        TenantwallConfig.setSchema("products", java.util.List.of("id", "name", "tenant_id", "price"));
+        try {
+            String sql = "INSERT INTO products VALUES (1, 'Widget', 'IGNORED', 99)";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            // tenant at position 2 → value replaced with 'ACME'
+            assertThat(result).contains("'ACME'");
+        } finally {
+            // schema persists — reset by re-setting empty
+            TenantwallConfig.setSchema("products", java.util.List.of());
+        }
+    }
+
+    @Test
+    void insertNoColumns_schemaConfigured_tenantIsLast_insertsNew() throws Exception {
+        TenantwallConfig.setSchema("products", java.util.List.of("id", "name", "tenant_id"));
+        try {
+            String sql = "INSERT INTO products VALUES (1, 'Widget')";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            // Insert 'ACME' at position 2 (last)
+            assertThat(result).contains("'ACME'");
+        } finally {
+            TenantwallConfig.setSchema("products", java.util.List.of());
+        }
+    }
+
+    @Test
+    void insertNoColumns_schemaMissingTenantColumn_skips() throws Exception {
+        TenantwallConfig.setSchema("products", java.util.List.of("id", "name", "price"));
+        try {
+            String sql = "INSERT INTO products VALUES (1, 'Widget', 99)";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            // Warns and returns unchanged
+            assertThat(result).doesNotContain("'ACME'");
+        } finally {
+            TenantwallConfig.setSchema("products", java.util.List.of());
+        }
+    }
+
+    @Test
+    void insertNoColumns_schemaColumnCountMismatch_skipsRow() throws Exception {
+        TenantwallConfig.setSchema("products", java.util.List.of("id", "name", "tenant_id", "price"));
+        try {
+            // Only 2 values, 4 columns expected → mismatch
+            String sql = "INSERT INTO products VALUES (1, 'Widget')";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            // Can't inject, returns unchanged
+            assertThat(result).doesNotContain("'ACME'");
+        } finally {
+            TenantwallConfig.setSchema("products", java.util.List.of());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Multi-row INSERT
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void multiRowInsert_explicitColumns_appendsToEachRow() throws Exception {
+        String sql = "INSERT INTO products (id, name) VALUES (1, 'A'), (2, 'B'), (3, 'C')";
+        String result = InsertHandler.handle(
+                (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+        // Three 'ACME' occurrences — one per row
+        int occurrences = result.split("'ACME'", -1).length - 1;
+        assertThat(occurrences).isEqualTo(3);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Mode 3: Append hack (opt-in)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void insertNoColumns_noSchema_appendHackEnabled_appends() throws Exception {
+        System.setProperty("tenantwall.insert.appendTenant", "true");
+        try {
+            String sql = "INSERT INTO products VALUES (1, 'Widget', 99)";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            assertThat(result).contains("'ACME'");
+        } finally {
+            System.clearProperty("tenantwall.insert.appendTenant");
+        }
+    }
+
+    @Test
+    void insertNoColumns_noSchema_appendHackDisabled_skips() throws Exception {
+        System.clearProperty("tenantwall.insert.appendTenant");
+        String sql = "INSERT INTO products VALUES (1, 'Widget', 99)";
+        String result = InsertHandler.handle(
+                (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+        assertThat(result).doesNotContain("'ACME'");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Excluded table
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void excludedTable_skipsInsert() throws Exception {
+        TenantwallConfig.setExcludedTables(java.util.Set.of("audit_log"));
+        try {
+            String sql = "INSERT INTO audit_log (user_id, action) VALUES (1, 'login')";
+            String result = InsertHandler.handle(
+                    (Insert) CCJSqlParserUtil.parse(sql), "tenant_id", "ACME");
+            assertThat(result).doesNotContain("'ACME'");
+        } finally {
+            TenantwallConfig.setExcludedTables(java.util.Set.of());
+        }
+    }
+    
 }
