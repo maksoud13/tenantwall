@@ -129,13 +129,17 @@ public final class TableExtractor {
             String name = t.getName();
             if (name != null && !name.isEmpty()) {
                 String lower = name.toLowerCase(Locale.ROOT);
-                // Skip CTE references — they are virtual relations, not physical tables
                 if (!cteAliases.contains(lower)) {
                     out.add(lower);
                 }
             }
+        } else if (item instanceof ParenthesedSelect ps) {
+            // Recurse into subquery in FROM — tables inside must be visible
+            // to callers for exclusion checks
+            Select inner = ps.getSelect();
+            if (inner != null) {
+                collectPhysical(inner, cteAliases, out);
+            }
         }
-        // ParenthesedSelect (subquery in FROM), LateralSubSelect, etc.
-        // → intentionally NOT recursed here (processed by SelectHandler).
     }
 }

@@ -6,7 +6,7 @@
 
     <groupId>io.github.maksoud13</groupId>
     <artifactId>tenantwall-parent</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <packaging>pom</packaging>
 
     <name>TenantWall</name>
@@ -308,11 +308,16 @@
                                         </limits>
                                     </rule>
                                 </rules>
+
                                 <excludes>
-                                    <exclude>com/tenantwall/agent/*Advice.class</exclude>
-                                    <exclude>**/TenantWallStatementInspector.class</exclude>
-                                    <exclude>com/tenantwall/agent/tenantwallAgent.class</exclude>
+                                    <exclude>com/tenantwall/agent/tenantwallAgent*</exclude>
+                                    <exclude>com/tenantwall/agent/SqlInterceptorAdvice*</exclude>
+                                    <exclude>com/tenantwall/agent/PrepareStatementAdvice*</exclude>
+                                    <exclude>com/tenantwall/agent/HibernateStatementAdvice*</exclude>
+                                    <exclude>com/tenantwall/agent/SqlModifierDebugger*</exclude>
+                                   
                                 </excludes>
+
                             </configuration>
                         </execution>
                     </executions>
