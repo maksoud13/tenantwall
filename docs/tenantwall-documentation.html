@@ -837,7 +837,7 @@ UPDATE products SET price = 100 WHERE id = 5 AND tenant_id = 'SHOP_ALPHA'</code>
   <table class="table-compact">
     <thead><tr><th>Requirement</th><th>Version</th></tr></thead>
     <tbody>
-      <tr><td>Java</td><td>11+ (21 verified)</td></tr>
+      <tr><td>Java</td><td>21+ (parent pom enforces &lt;release&gt;21; codebase uses Java 21 features)</td></tr>
       <tr><td>Spring Boot</td><td>3.x (or any framework using JDBC)</td></tr>
       <tr><td>Hibernate</td><td>6.2+ (for primary interceptor)</td></tr>
       <tr><td>Docker</td><td>For running the parser sidecar</td></tr>

@@ -8,7 +8,7 @@
 
 | Requirement | Version | Notes |
 |:---|:---|:---|
-| Java | 11+ (21 verified) | Any JDK that supports `-javaagent` |
+| Java | 21+ | Required — the parent `pom.xml` sets `<maven.compiler.release>21</maven.compiler.release>` and the codebase uses Java 21 features (pattern matching, switch expressions). JDK 11 will not build this project. |
 | Spring Boot | 3.x | Required for the starter. Plain JDBC works without it |
 | Hibernate | 6.2+ | For the primary interceptor (Layer 1) |
 | Docker | 20+ | For running the Python parser sidecar |
@@ -75,6 +75,9 @@ docker run -d --name tenantwall-parser \
 ### Step 4: Run your app with the agent
 
 You can download the agent JAR from [Maven Central](https://central.sonatype.com/artifact/io.github.maksoud13/agent-module), or use the one in your local `.m2` folder after running `mvn install` on the agent-module source.
+
+> [!IMPORTANT]
+> Use **v1.2.1 or later**. In v1.2.0 the agent JAR's `Premain-Class` manifest entry pointed to a non-existent class (`io.github.maksoud13.agent.tenantwallAgent` instead of the actual `com.tenantwall.agent.tenantwallAgent`), so `java -javaagent:...` would fail silently with `ClassNotFoundException` at JVM startup. Fixed in v1.2.1.
 
 **Linux / macOS:**
 
