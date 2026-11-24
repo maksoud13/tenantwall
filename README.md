@@ -10,7 +10,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/maksoud13/tenantwall-parser.svg?label=Docker%20Hub)](https://hub.docker.com/r/maksoud13/tenantwall-parser)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./docs/13-license.md)
 [![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://openjdk.org/)
-[![Tests](https://img.shields.io/badge/tests-414%2B-brightgreen)](./docs/07-test-results.md)
+[![Tests](https://img.shields.io/badge/tests-414-brightgreen)](docs/07-test-results.md)
 [![Databases](https://img.shields.io/badge/databases-3-blue)](./docs/05-support-matrix.md)
 [![Strategies](https://img.shields.io/badge/strategies-5-purple)](./docs/03-the-solution.md#tenant-resolution-strategies-v11)
 
