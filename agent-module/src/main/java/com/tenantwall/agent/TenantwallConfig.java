@@ -27,14 +27,24 @@ import org.slf4j.LoggerFactory;
  * <p>
  * All fields are {@code volatile} so the user can override programmatically
  * at runtime (e.g., blue/green parser URL changes).
+ *
+ * <h2>Fail-closed defaults (v1.3.0+)</h2>
+ *
+ * <p>
+ * {@code onMissing} defaults to {@link MissingValueStrategy#FAIL}, and
+ * {@code parserFailureMode} defaults to {@link ParserFailureMode#FAIL_CLOSED}.
+ * A query that cannot be safely rewritten is rejected with
+ * {@link TenantWallParseException} instead of running unfiltered.
  */
 public final class TenantwallConfig {
+
     private static final Logger log = LoggerFactory.getLogger("TenantWall");
+
     // ═══ Filter ═══
     private static volatile boolean enabled = true;
     private static volatile String filterColumn = "tenant_id";
     private static volatile String defaultValue = null;
-    private static volatile MissingValueStrategy onMissing = MissingValueStrategy.SKIP;
+    private static volatile MissingValueStrategy onMissing = MissingValueStrategy.FAIL;
     private static volatile Set<String> excludedTables = Set.of();
 
     // ═══ Parser ═══
@@ -44,6 +54,8 @@ public final class TenantwallConfig {
     private static volatile String parserSecret = null;
     private static volatile int parserTokenTtlSeconds = 60;
     private static volatile boolean parserEnforceAuth = false;
+    // ═══ Parser Failure Mode (NEW) ═══
+    private static volatile ParserFailureMode parserFailureMode = ParserFailureMode.FAIL_CLOSED;
     // ═══ INSERT ═══
     private static volatile InsertStrategy insertStrategy = InsertStrategy.SKIP;
 
@@ -61,6 +73,19 @@ public final class TenantwallConfig {
 
     public enum InsertStrategy {
         SKIP, APPEND, FAIL
+    }
+
+    /**
+     * Behaviour when a complex query cannot be rewritten by either the
+     * Python parser or the local JSqlParser.
+     */
+    public enum ParserFailureMode {
+        /** Throw {@link TenantWallParseException}. Default since v1.3.0. */
+        FAIL_CLOSED,
+        /** Try the local parser; if that also fails, throw. */
+        LOCAL_FALLBACK,
+        /** Return the original SQL unfiltered. DANGEROUS — dev/legacy only. */
+        FAIL_OPEN
     }
 
     // ═══ Tenant Resolution (NEW — for auto-config) ═══
@@ -113,6 +138,10 @@ public final class TenantwallConfig {
         return insertStrategy;
     }
 
+    public static ParserFailureMode getParserFailureMode() {
+        return parserFailureMode;
+    }
+
     public static List<String> getSchema(String table) {
         if (table == null)
             return null;
@@ -151,6 +180,7 @@ public final class TenantwallConfig {
     public static String getTenantCookieName() {
         return tenantCookieName;
     }
+
     // ═══════════════════════════════════════════════════════════════
     // Programmatic setters (runtime overrides)
     // ═══════════════════════════════════════════════════════════════
@@ -169,7 +199,7 @@ public final class TenantwallConfig {
     }
 
     public static void setOnMissing(MissingValueStrategy v) {
-        onMissing = v;
+        onMissing = (v == null) ? MissingValueStrategy.FAIL : v;
     }
 
     public static void setExcludedTables(Collection<String> v) {
@@ -196,6 +226,10 @@ public final class TenantwallConfig {
 
     public static void setInsertStrategy(InsertStrategy v) {
         insertStrategy = v;
+    }
+
+    public static void setParserFailureMode(ParserFailureMode v) {
+        parserFailureMode = (v == null) ? ParserFailureMode.FAIL_CLOSED : v;
     }
 
     public static void setSchema(String table, List<String> columns) {
@@ -226,6 +260,7 @@ public final class TenantwallConfig {
     public static void setParserEnforceAuth(boolean v) {
         parserEnforceAuth = v;
     }
+
     // ═══════════════════════════════════════════════════════════════
     // Initialization (called once from premain)
     // ═══════════════════════════════════════════════════════════════
@@ -248,17 +283,20 @@ public final class TenantwallConfig {
         // 5) Apply
         applyAll(merged);
 
-        // 6) Validate + warn ← السطرين دول هما اللي ناقصين
+        // 6) Validate + warn
         validate();
         warnConflictingStrategies(merged);
 
-        log.info("Config: enabled={}, column={}, parser={}, enforceAuth={}, secretSet={}, excluded={}",
+        log.info(
+                "Config: enabled={}, column={}, parser={}, enforceAuth={}, secretSet={}, excluded={}, onMissing={}, parserFailureMode={}",
                 enabled,
                 filterColumn,
                 isParserEnabled() ? parserUrl : "disabled",
                 parserEnforceAuth,
                 parserSecret != null && !parserSecret.isBlank(),
-                excludedTables);
+                excludedTables,
+                onMissing,
+                parserFailureMode);
     }
 
     // ─── Sources ───
@@ -333,6 +371,9 @@ public final class TenantwallConfig {
         parserSecret = getStr(p, "tenantwall.parser.secret", parserSecret);
         parserTokenTtlSeconds = getInt(p, "tenantwall.parser.token.ttlSeconds", parserTokenTtlSeconds);
         parserEnforceAuth = getBool(p, "tenantwall.parser.enforceAuth", parserEnforceAuth);
+        // ═══ Parser Failure Mode ═══
+        parserFailureMode = parseParserFailureMode(
+                p.getProperty("tenantwall.parser.failureMode", parserFailureMode.name()));
 
         insertStrategy = parseInsert(p.getProperty("tenantwall.insert.strategy", insertStrategy.name()));
         // ═══ Tenant Resolution (NEW) ═══
@@ -389,7 +430,7 @@ public final class TenantwallConfig {
         try {
             return MissingValueStrategy.valueOf(v.trim().toUpperCase(Locale.ROOT));
         } catch (Exception e) {
-            return MissingValueStrategy.SKIP;
+            return MissingValueStrategy.FAIL; // fail-closed default
         }
     }
 
@@ -398,6 +439,14 @@ public final class TenantwallConfig {
             return InsertStrategy.valueOf(v.trim().toUpperCase(Locale.ROOT));
         } catch (Exception e) {
             return InsertStrategy.SKIP;
+        }
+    }
+
+    private static ParserFailureMode parseParserFailureMode(String v) {
+        try {
+            return ParserFailureMode.valueOf(v.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return ParserFailureMode.FAIL_CLOSED; // fail-closed default
         }
     }
 
@@ -453,6 +502,16 @@ public final class TenantwallConfig {
                         "[TenantWall] tenantwall.parser.token.ttlSeconds must be 1..300 (got "
                                 + parserTokenTtlSeconds + ")");
             }
+        }
+
+        // ═══ Fail-open warnings ═══
+        if (onMissing == MissingValueStrategy.SKIP) {
+            log.warn("⚠️  onMissing=SKIP — queries without a tenant ID will run UNFILTERED. "
+                    + "This is a data-leak risk. Set tenantwall.filter.onMissing=FAIL in production.");
+        }
+        if (parserFailureMode == ParserFailureMode.FAIL_OPEN) {
+            log.warn("⚠️  ParserFailureMode=FAIL_OPEN — parser failures return the original SQL "
+                    + "unfiltered. This is a data-leak risk. Use only in dev.");
         }
     }
 

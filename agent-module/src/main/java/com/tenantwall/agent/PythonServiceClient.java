@@ -15,8 +15,6 @@ import java.time.Duration;
  */
 public class PythonServiceClient {
 
-    private static final String BASE_URL = TenantwallConfig.getParserUrl();
-
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(3))
@@ -41,20 +39,21 @@ public class PythonServiceClient {
 
     public static String modify(String sql, String column, String value, String dialect)
             throws PythonServiceException, InterruptedException {
-
-        if (!isEnabled()) {
-            throw new PythonServiceException(
-                    "Python parser is not configured (-Dtenantwall.parser.url)");
-        }
-
+        String BASE_URL = TenantwallConfig.getParserUrl();
         try {
             String jsonBody = buildJsonRequest(sql, column, value, dialect);
 
             // Build request with optional Authorization
+
+            if (BASE_URL == null || BASE_URL.isBlank()) {
+                throw new PythonServiceException("Parser URL not configured");
+            }
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/api/modify"))
-                    .timeout(REQUEST_TIMEOUT)
-                    .header("Content-Type", "application/json");
+                    .uri(URI.create(BASE_URL + "/api/modify"));
+            if (!isEnabled()) {
+                throw new PythonServiceException(
+                        "Python parser is not configured (-Dtenantwall.parser.url)");
+            }
 
             if (TenantwallConfig.isParserEnforceAuth()) {
                 String token = JwtSigner.sign(jsonBody);
