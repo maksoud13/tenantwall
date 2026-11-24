@@ -35,6 +35,11 @@ If no tenant is in context:
 - `onMissing=fail` → `SecurityException` (recommended for production)
 - `onMissing=skip` → logs warning, executes unchanged (development only)
 
+> [!IMPORTANT]
+> **v1.2.1 behavior fix:** `TenantWallStatementInspector.inspect()` previously caught `Exception` (which includes `TenantWallParseException`) and returned the original SQL. That catch-block silently reverted the fail-closed default to fail-open at the Hibernate inspector layer — meaning a query that `SmartSqlModifier` had decided must NOT execute (per the configured `parserFailureMode=FAIL_CLOSED`) was actually still running unfiltered.
+>
+> In v1.2.1 the inspector catches `TenantWallParseException` separately and re-throws it; only truly unexpected exceptions (NPE, ClassNotFound, ...) fall through to the fail-open path with a loud WARN log. If you were relying on the inspector for fail-closed enforcement in v1.2.0, **upgrade to v1.2.1**.
+
 ### 6. Cache invalidation on tenant change
 
 `TenantwallConfig.setFilterColumn("org_id")` clears the query cache automatically.

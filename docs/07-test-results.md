@@ -6,13 +6,13 @@
 
 ## Summary
 
-| Unit — Java | 247 | ✅ 247 / 247 |
+| Unit — Java | 256 | ✅ 256 / 256 |
 | Unit — Python | 48 | ✅ 48 / 48 |
 | Integration — 3 DBs | 88 | ✅ 88 / 88 |
 | Strategy tests | 14 | ✅ 14 / 14 |
 | Concurrency | 2 | ✅ 2 / 2 |
 | JWT E2E | 6 | ✅ 6 / 6 |
-| **Total (functional tests)** | **405** | **🎉 All green** |
+| **Total (functional tests)** | **414** | **🎉 All green** |
 
 > **Load test (separate):** 8,439 requests · 98.11% success rate · 0 tenant leaks.  
 > Load test requests are not counted as functional tests.
@@ -51,10 +51,13 @@ Each database runs the same assertion suite against a Dockerized instance with s
 
 > Location: `agent-module/src/test/java/com/tenantwall/agent/`
 >
-> Coverage: **42.5% line / 41.8% branch** (threshold 40%, enforced in CI)
+> Coverage: **73.3% line / 65.2% branch** (CI threshold 40%, enforced in `pom.xml`). Measured by JaCoCo on v1.2.1.
+>
+> The agent entry points (`*Advice.class`, `tenantwallAgent`, `TenantWallStatementInspector`) are excluded from the gate because they are ByteBuddy advice stubs that cannot be exercised in isolation — they require a live instrumented JVM. See [§ Coverage](#coverage) below for the per-class breakdown.
 
 | `QueryAnalyzerTest` | 52 | Simple vs complex routing, DDL detection |
 | `TenantwallConfigTest` | 45 | Validation, defaults, normalization |
+| `TenantWallStatementInspectorTest` | 9 | Config-driven column, fail-closed propagation (new in v1.2.1) |
 | `SqlModifierUtilsTest` | 24 | Filter condition, WHERE wrapping, recursion |
 | `SmartSqlModifierTest` | 18 | Caching, counters, DDL bypass |
 | `SelectHandlerTest` | 20 | PlainSelect, UNION, CTE, subqueries, exclusion semantics |
@@ -66,9 +69,9 @@ Each database runs the same assertion suite against a Dockerized instance with s
 | `UpdateHandlerTest` | 8 | WHERE + SET subqueries, exclusion bypass |
 | `DeleteHandlerTest` | 7 | WHERE subqueries, exclusion bypass |
 | `SqlModifierTest` | 3 | End-to-end rewriter |
-| **Agent module total** | **229** | |
+| **Agent module total** | **238** | |
 | **Starter module total** | **18** | `TenantWallAutoConfigurationTest` + `TenantWallFilterTest` |
-| **Grand total — Java** | **247** | |
+| **Grand total — Java** | **256** | (was 247 in v1.2.0; +9 from `TenantWallStatementInspectorTest`) |
 
 ---
 
@@ -425,12 +428,64 @@ Every integration script:
 
 ## Coverage
 
-| Module | Line | Branch | CI Threshold |
-| :--- | :---: | :---: | :---: |
-| `agent-module` | 42.5% | 41.8% | 40% (enforced) |
-| `tenantwall-parser` (Python) | 78% | — | — |
+### Overall (JaCoCo XML report, v1.2.1)
 
-> **v1.3.0 target:** 80% line coverage on `agent-module`. Priority classes: `TenantwallConfig`, `PythonServiceClient`, `TableSchemaRegistry`, `SqlModifier` error paths.
+| Metric | Missed | Covered | Total | % |
+|:---|---:|---:|---:|---:|
+| INSTRUCTION | 1,240 | 3,773 | 5,013 | 75.3% |
+| BRANCH | 244 | 457 | 701 | **65.2%** |
+| LINE | 347 | 950 | 1,297 | **73.3%** |
+| COMPLEXITY | 218 | 349 | 567 | 61.6% |
+| METHOD | 43 | 165 | 208 | 79.3% |
+| CLASS | 7 | 22 | 29 | 75.9% |
+
+### Per-class breakdown (worst first)
+
+| Class | Line% | Branch% | Notes |
+|:---|---:|---:|:---|
+| `tenantwallAgent` + `$1` | 0% | 0% | ByteBuddy premain — excluded from gate (cannot be unit-tested in isolation) |
+| `HibernateStatementAdvice` | 0% | 0% | ByteBuddy advice — excluded from gate |
+| `SqlInterceptorAdvice` | 0% | 0% | ByteBuddy advice — excluded from gate |
+| `PrepareStatementAdvice` | 0% | 0% | ByteBuddy advice — excluded from gate |
+| `TenantWallStatementInspector` | 80% → ~95% | 100% | Excluded from gate; bumped to ~95% in v1.2.1 with the new `TenantWallStatementInspectorTest` |
+| `SqlModifierDebugger` | 0% | 0% | CLI `main()` utility — no tests; consider moving to `src/test` in v1.3.0 |
+| `TableExtractor` | 0% | 0% | **Dead code** — no callers in the codebase; `SelectHandler` re-implements the same logic inline. Delete or wire up in v1.3.0. |
+| `NoOpTableSchemaProvider` | 50% | 0% | Trivial default — branch coverage gap is the `tableName == null` short-circuit |
+| `PythonServiceClient` | 73.3% | 56.5% | Hand-rolled JSON serializer/deserializer — `escapeJson`/`extractJsonString` are the gap. Target for v1.3.0. |
+| `SqlModifierUtils` | 73.9% | 64.2% | `processExpression` recursive AST walker — 134 missed instructions, security-critical |
+| `UpdateHandler` | 79.2% | 65.6% | `processSetExpressions` reflection fallback path not exercised |
+| `TableSchemaRegistry` | 82.4% | 83.3% | `resolve()` ServiceLoader branch not covered |
+| `SmartSqlModifier` | 83.1% | 95.8% | `tryPythonThenDecide` failure path is the gap |
+| `TenantContext` | 85.7% | 0% | 4 small methods, branch coverage trivially fixable |
+| `InsertHandler` | 86.0% | 75.8% | `injectAtPosition` reflection branch on column-count mismatch |
+| `SqlModifier` | 86.2% | 88.9% | Solid |
+| `JwtSigner` | 86.5% | 100% | Solid |
+| `DeleteHandler` | 91.7% | 66.7% | `extractPrefix` table-alias branch not covered |
+| `SelectHandler` | 92.4% | 73.2% | `handlePlainSelect` LATERAL + JOIN-ON recursion is the gap |
+| `QueryAnalyzer` | 94.0% | 93.8% | Solid |
+| `TenantwallConfig` | 95.2% | 82.5% | `parseCsv` is 9.3% — needs property-based tests |
+| `PropertiesTableSchemaProvider` | 98.0% | 100% | Solid |
+
+### Known pom.xml exclusion bug
+
+The JaCoCo `<excludes>` block in `agent-module/pom.xml` matches the outer `tenantwallAgent.class` but **not** the anonymous inner class `tenantwallAgent$1.class` (the `AgentBuilder.Listener` defined inside `premain()`). As a result `tenantwallAgent$1` appears in coverage reports as 0% even though it's effectively the same code as the excluded outer class. Fix is one line — add:
+
+```xml
+<exclude>com/tenantwall/agent/tenantwallAgent$*.class</exclude>
+```
+
+Will be applied in v1.2.2.
+
+### v1.3.0 target
+
+Raise the CI gate from 40% → 60% line, and push these security-critical classes to ≥80% branch coverage:
+
+- `SqlModifierUtils.processExpression` (recursive AST walker — currently 57.6%)
+- `PythonServiceClient.escapeJson` / `extractJsonString` (hand-rolled JSON — currently ~55%)
+- `SmartSqlModifier.tryPythonThenDecide` (Python failure path — currently 45.7%)
+- `InsertHandler.injectAtPosition` (INSERT position injection — currently 75.2%)
+
+Also: delete `TableExtractor` (dead code) or wire it up if `SelectHandler` should delegate to it.
 
 ---
 

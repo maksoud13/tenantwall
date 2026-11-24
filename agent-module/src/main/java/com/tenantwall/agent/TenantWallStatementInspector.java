@@ -15,8 +15,8 @@ public class TenantWallStatementInspector implements StatementInspector {
             if (tenantId == null || tenantId.isEmpty()) {
                 return sql;
             }
-
-            String modified = SmartSqlModifier.modify(sql, "tenant_id", tenantId);
+            String column = TenantwallConfig.getFilterColumn();
+            String modified = SmartSqlModifier.modify(sql, column, tenantId);
 
             if (!modified.equals(sql)) {
                 log.debug("{} Modified (Inspector layer)", LogTags.HIBERNATE);
@@ -24,9 +24,18 @@ public class TenantWallStatementInspector implements StatementInspector {
 
             return modified;
 
+        } catch (TenantWallParseException e) {
+            // v1.3.0 fail-closed contract: a query that cannot be safely
+            // rewritten MUST NOT run unfiltered. SmartSqlModifier already
+            // throws when onMissing=FAIL or parserFailureMode=FAIL_CLOSED
+            // (the defaults). Swallowing that exception here would have
+            // silently reverted to fail-open, defeating the entire security
+            // model. Propagate as-is.
+            throw e;
         } catch (Exception e) {
-            // Fail-open: return original SQL on unexpected error.
-            // This is a security-relevant fallback — visible warning + stack trace.
+            // Truly unexpected error (NPE, ClassNotFound, ...). Returning the
+            // original SQL is a security-relevant fallback — log loudly so it
+            // is visible in monitoring, not silently swallowed.
             log.warn("{} Unexpected error — returning original SQL", LogTags.HIBERNATE, e);
             return sql;
         }

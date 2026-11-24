@@ -139,12 +139,13 @@ examples/<db>-spring-boot/
 
 ## Version Compatibility Matrix
 
-| TenantWall | Hibernate | Java | Spring Boot |
-|---|---|---|---|
-| v1.0 | 6.2+ | 11+ | 3.x |
-| v1.0 | 6.5 | 21 | 3.3.5 |
+| TenantWall | Hibernate | Java | Spring Boot | Notes |
+|---|---|---|---|---|
+| v1.0 | 6.2+ | 11+ | 3.x | Initial release. Did not yet enforce `<release>21` in the build. |
+| v1.1 | 6.5 | 21 | 3.3.5 | Java 11 support dropped — parent `pom.xml` sets `<maven.compiler.release>21</maven.compiler.release>`. Codebase uses Java 21 features. |
+| v1.2.x | 6.5.3.Final | 21 | 3.3.5 | Current. Same Java requirement as v1.1. |
 
-**Other combinations:** untested, but likely compatible. File an issue if you test them.
+**Other combinations:** untested. Hibernate 6.6+ and Spring Boot 3.4+ are expected to work but have not been verified against the integration suite. File an issue if you test them.
 
 ---
 
